@@ -34,12 +34,16 @@ vi.mock("../services/activity-log.js", () => ({
 
 const {
   collectCatalogTeamSkillPreparations,
+  listCatalogTeams,
   readCatalogTeamProvenance,
   teamsCatalogService,
 } = await import("../services/teams-catalog.js");
 
 const CORE_EXEC_TEAM_ID = "paperclipai:bundled:company-defaults:core-exec-team";
-const CORE_EXEC_TEAM_HASH = "sha256:0f20e9d56124c1dc90a1e4b128fabd863538bcc935117220f719d9620f7c89f1";
+const CORE_EXEC_TEAM_HASH = (await listCatalogTeams()).find((team) => team.id === CORE_EXEC_TEAM_ID)?.contentHash;
+if (!CORE_EXEC_TEAM_HASH) {
+  throw new Error(`Missing catalog team fixture: ${CORE_EXEC_TEAM_ID}`);
+}
 
 function agentWithCatalogTeam(originHash: string | null, extra: Record<string, unknown> = {}) {
   return {

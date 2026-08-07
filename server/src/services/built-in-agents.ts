@@ -960,7 +960,7 @@ export function builtInAgentService(db: Db) {
     return {
       ...input,
       adapterType: candidate.adapterType,
-      adapterConfig: isPlainRecord(candidate.adapterConfig) ? { ...candidate.adapterConfig } : {},
+      adapterConfig: {},
     };
   }
 
