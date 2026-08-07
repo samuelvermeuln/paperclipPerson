@@ -37,6 +37,19 @@ export interface AdapterModel {
   label: string;
 }
 
+export interface AdapterModelsEnvelope {
+  models: AdapterModel[];
+  provider?: string;
+  cached?: boolean;
+  fetchedAt?: string;
+}
+
+function normalizeAdapterModelsEnvelope(
+  value: AdapterModel[] | AdapterModelsEnvelope,
+): AdapterModelsEnvelope {
+  return Array.isArray(value) ? { models: value } : value;
+}
+
 export type { AdapterModelProfileKey };
 export type AdapterModelProfile = AdapterModelProfileDefinition;
 
@@ -190,19 +203,49 @@ export const agentsApi = {
     api.get<AgentTaskSession[]>(agentPath(id, companyId, "/task-sessions")),
   resetSession: (id: string, taskKey?: string | null, companyId?: string) =>
     api.post<void>(agentPath(id, companyId, "/runtime-state/reset-session"), { taskKey: taskKey ?? null }),
-  adapterModels: (
+  adapterModelsDetailed: (
     companyId: string,
     type: string,
-    options?: { refresh?: boolean; environmentId?: string | null },
+    options?: {
+      refresh?: boolean;
+      environmentId?: string | null;
+      baseUrl?: string | null;
+      apiKeyEnv?: string | null;
+      combo?: string | null;
+      comboPrefix?: string | null;
+      modelsCacheTtlSeconds?: number | null;
+    },
   ) => {
     const params = new URLSearchParams();
     if (options?.refresh) params.set("refresh", "1");
     if (options?.environmentId) params.set("environmentId", options.environmentId);
+    if (options?.baseUrl) params.set("baseUrl", options.baseUrl);
+    if (options?.apiKeyEnv) params.set("apiKeyEnv", options.apiKeyEnv);
+    if (options?.combo) params.set("combo", options.combo);
+    if (options && "comboPrefix" in options && options.comboPrefix != null) {
+      params.set("comboPrefix", options.comboPrefix);
+    }
+    if (typeof options?.modelsCacheTtlSeconds === "number" && Number.isFinite(options.modelsCacheTtlSeconds)) {
+      params.set("modelsCacheTtlSeconds", String(options.modelsCacheTtlSeconds));
+    }
     const query = params.size > 0 ? `?${params.toString()}` : "";
-    return api.get<AdapterModel[]>(
+    return api.get<AdapterModel[] | AdapterModelsEnvelope>(
       `/companies/${encodeURIComponent(companyId)}/adapters/${encodeURIComponent(type)}/models${query}`,
-    );
+    ).then(normalizeAdapterModelsEnvelope);
   },
+  adapterModels: (
+    companyId: string,
+    type: string,
+    options?: {
+      refresh?: boolean;
+      environmentId?: string | null;
+      baseUrl?: string | null;
+      apiKeyEnv?: string | null;
+      combo?: string | null;
+      comboPrefix?: string | null;
+      modelsCacheTtlSeconds?: number | null;
+    },
+  ) => agentsApi.adapterModelsDetailed(companyId, type, options).then((response) => response.models),
   detectModel: (companyId: string, type: string) =>
     api.get<DetectedAdapterModel | null>(
       `/companies/${encodeURIComponent(companyId)}/adapters/${encodeURIComponent(type)}/detect-model`,

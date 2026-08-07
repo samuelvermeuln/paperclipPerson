@@ -98,6 +98,12 @@ import { DEFAULT_GEMINI_LOCAL_MODEL } from "@paperclipai/adapter-gemini-local";
 import { DEFAULT_OPENCODE_LOCAL_MODEL } from "@paperclipai/adapter-opencode-local";
 import { requireOpenCodeModelId } from "@paperclipai/adapter-opencode-local/server";
 import {
+  applyNineRouterAgentConfigDefaults,
+  discover9RouterCombos,
+  NineRouterDiscoveryError,
+  resolve9RouterConfig,
+} from "@paperclipai/adapter-opencode-9router/server";
+import {
   loadDefaultAgentInstructionsBundle,
   resolveDefaultAgentInstructionsBundleRole,
 } from "../services/default-agent-instructions.js";
@@ -1194,11 +1200,59 @@ export function agentRoutes(
     }
   }
 
+  async function buildAdapterResolutionRuntimeEnv(
+    req: Request,
+    companyId: string,
+    environmentId: string | null | undefined,
+  ): Promise<NodeJS.ProcessEnv> {
+    if (!environmentId) return process.env;
+    const environment = await environmentsSvc.getById(environmentId);
+    if (!environment) return process.env;
+    const environmentEnv = Object.fromEntries(
+      Object.entries(parseObject(environment.envVars)).filter(
+        ([key]) => !isForbiddenConfigEnvKey(key),
+      ),
+    );
+    if (Object.keys(environmentEnv).length === 0) return process.env;
+
+    const environmentSecretContext = buildActorSecretContext(req, {
+      consumerType: "environment",
+      consumerId: environmentId,
+    });
+    const missingBindings =
+      typeof secretsSvc.collectMissingRuntimeBindings === "function"
+        ? await secretsSvc.collectMissingRuntimeBindings(
+            companyId,
+            environmentEnv,
+            environmentSecretContext,
+          )
+        : [];
+    const missingKeys = new Set(missingBindings.map((binding) => binding.envKey));
+    const resolvableEnvironmentEnv = Object.fromEntries(
+      Object.entries(environmentEnv).filter(([key]) => !missingKeys.has(key)),
+    );
+    if (Object.keys(resolvableEnvironmentEnv).length === 0) return process.env;
+
+    const environmentEnvResolution = await secretsSvc.resolveEnvBindings(
+      companyId,
+      resolvableEnvironmentEnv,
+      environmentSecretContext,
+    );
+    if (Object.keys(environmentEnvResolution.env).length === 0) return process.env;
+
+    return {
+      ...process.env,
+      ...environmentEnvResolution.env,
+    };
+  }
+
   async function normalizeMediatedAdapterConfigForPersistence(input: {
+    req: Request;
     companyId: string;
     adapterType: string | null | undefined;
     adapterConfig: Record<string, unknown>;
     constraintAdapterConfig?: Record<string, unknown>;
+    environmentId?: string | null;
   }): Promise<Record<string, unknown>> {
     const normalizedAdapterConfig = await secretsSvc.normalizeAdapterConfigForPersistence(
       input.companyId,
@@ -1208,20 +1262,50 @@ export function agentRoutes(
         adapterType: input.adapterType ?? null,
       },
     );
+    let runtimeEnv: NodeJS.ProcessEnv = process.env;
+    if (input.adapterType === "opencode_9router") {
+      const baseRuntimeEnv = await buildAdapterResolutionRuntimeEnv(input.req, input.companyId, input.environmentId);
+      const prospectiveSecretContext = buildActorSecretContext(
+        input.req,
+        input.environmentId
+          ? { consumerType: "environment", consumerId: input.environmentId }
+          : { consumerType: "system", consumerId: "agent_config_default_resolution" },
+      );
+      const { config: resolvedProspectiveConfig } = await secretsSvc.resolveAdapterConfigForRuntime(
+        input.companyId,
+        normalizedAdapterConfig,
+        prospectiveSecretContext,
+        { adapterType: input.adapterType, userSecretMediation: "owner_scoped" },
+      );
+      const resolvedAdapterEnv = Object.fromEntries(
+        Object.entries(parseObject((resolvedProspectiveConfig as Record<string, unknown>).env)).filter(
+          (entry): entry is [string, string] => typeof entry[1] === "string",
+        ),
+      );
+      runtimeEnv = {
+        ...baseRuntimeEnv,
+        ...resolvedAdapterEnv,
+      };
+    }
+    const adapterConfigWithDefaults = input.adapterType === "opencode_9router"
+      ? await applyNineRouterAgentConfigDefaults(normalizedAdapterConfig, runtimeEnv)
+      : normalizedAdapterConfig;
     await assertAdapterConfigConstraints(
       input.adapterType,
       input.constraintAdapterConfig
-        ? { ...input.constraintAdapterConfig, ...normalizedAdapterConfig }
-        : normalizedAdapterConfig,
+        ? { ...input.constraintAdapterConfig, ...adapterConfigWithDefaults }
+        : adapterConfigWithDefaults,
     );
-    return normalizedAdapterConfig;
+    return adapterConfigWithDefaults;
   }
 
   async function normalizeRuntimeConfigAdapterConfigsForPersistence(
+    req: Request,
     companyId: string,
     adapterType: string,
     runtimeConfig: Record<string, unknown>,
     baseAdapterConfig: Record<string, unknown>,
+    environmentId?: string | null,
   ): Promise<Record<string, unknown>> {
     const entries = listRuntimeModelProfileAdapterConfigs(runtimeConfig);
     if (entries.length === 0) return runtimeConfig;
@@ -1236,6 +1320,7 @@ export function agentRoutes(
       const adapterProfile = adapterModelProfiles.find((profile) => profile.key === entry.profileKey);
       const adapterDefaultConfig = asRecord(adapterProfile?.adapterConfig) ?? {};
       const normalizedAdapterConfig = await normalizeMediatedAdapterConfigForPersistence({
+        req,
         companyId,
         adapterType,
         adapterConfig: entry.adapterConfig,
@@ -1243,6 +1328,7 @@ export function agentRoutes(
           ...baseAdapterConfig,
           ...adapterDefaultConfig,
         },
+        environmentId,
       });
       normalizedModelProfiles[entry.profileKey] = {
         ...entry.profile,
@@ -1346,6 +1432,16 @@ export function agentRoutes(
       const reason = err instanceof Error ? err.message : String(err);
       throw unprocessable(`Invalid opencode_local adapterConfig: ${reason}`);
     }
+  }
+
+  function translateNineRouterDiscoveryRouteError(error: unknown): never {
+    if (error instanceof NineRouterDiscoveryError) {
+      throw new HttpError(error.status, error.message, { code: error.code });
+    }
+    throw new HttpError(
+      500,
+      error instanceof Error ? error.message : "Failed to discover 9Router combos.",
+    );
   }
 
   function resolveInstructionsFilePath(candidatePath: string, adapterConfig: Record<string, unknown>) {
@@ -1763,6 +1859,41 @@ export function agentRoutes(
     if (environmentId && !environment) {
       res.status(404).json({ error: "Environment not found" });
       return;
+    }
+    if (type === "opencode_9router") {
+      try {
+        const discoveryConfig: Record<string, unknown> = {};
+        if (typeof req.query.baseUrl === "string" && req.query.baseUrl.trim().length > 0) {
+          discoveryConfig.baseUrl = req.query.baseUrl;
+        }
+        if (typeof req.query.apiKeyEnv === "string" && req.query.apiKeyEnv.trim().length > 0) {
+          discoveryConfig.apiKeyEnv = req.query.apiKeyEnv.trim();
+        }
+        if (Object.prototype.hasOwnProperty.call(req.query, "comboPrefix")) {
+          discoveryConfig.comboPrefix = typeof req.query.comboPrefix === "string" ? req.query.comboPrefix : "";
+        }
+        if (typeof req.query.modelsCacheTtlSeconds === "string") {
+          discoveryConfig.modelsCacheTtlSeconds = Number.parseInt(req.query.modelsCacheTtlSeconds, 10);
+        }
+        if (typeof req.query.combo === "string") {
+          discoveryConfig.combo = req.query.combo;
+        }
+        const runtimeEnv = await buildAdapterResolutionRuntimeEnv(req, companyId, environmentId);
+        const resolved = resolve9RouterConfig(discoveryConfig, runtimeEnv);
+        const discovery = await discover9RouterCombos({
+          baseUrl: resolved.normalizedBaseUrl,
+          apiKeyEnv: resolved.apiKeyEnv,
+          apiKey: resolved.apiKey,
+          comboPrefix: resolved.comboPrefix,
+          cacheTtlSeconds: resolved.modelsCacheTtlSeconds,
+          preferredCombo: typeof req.query.combo === "string" ? req.query.combo : resolved.combo,
+          forceRefresh: refresh,
+        });
+        res.json(discovery);
+        return;
+      } catch (error) {
+        translateNineRouterDiscoveryRouteError(error);
+      }
     }
     if (type === "opencode_local" && environment && environment.driver !== "local") {
       const adapter = requireServerAdapter(type);
@@ -2494,15 +2625,19 @@ export function agentRoutes(
       normalizeDesiredSkillSelections(Array.isArray(requestedDesiredSkills) ? requestedDesiredSkills : undefined),
     );
     const normalizedAdapterConfig = await normalizeMediatedAdapterConfigForPersistence({
+      req,
       companyId,
       adapterType: hireInput.adapterType,
       adapterConfig: desiredSkillAssignment.adapterConfig,
+      environmentId: hireInput.defaultEnvironmentId ?? null,
     });
     const normalizedRuntimeConfig = await normalizeRuntimeConfigAdapterConfigsForPersistence(
+      req,
       companyId,
       hireInput.adapterType,
       await normalizeNewAgentRuntimeConfig(hireInput.adapterType, hireInput.runtimeConfig),
       normalizedAdapterConfig,
+      hireInput.defaultEnvironmentId ?? null,
     );
     const normalizedHireInput = {
       ...hireInput,
@@ -2689,15 +2824,19 @@ export function agentRoutes(
       normalizeDesiredSkillSelections(Array.isArray(requestedDesiredSkills) ? requestedDesiredSkills : undefined),
     );
     const normalizedAdapterConfig = await normalizeMediatedAdapterConfigForPersistence({
+      req,
       companyId,
       adapterType: createInput.adapterType,
       adapterConfig: desiredSkillAssignment.adapterConfig,
+      environmentId: createInput.defaultEnvironmentId ?? null,
     });
     const normalizedRuntimeConfig = await normalizeRuntimeConfigAdapterConfigsForPersistence(
+      req,
       companyId,
       createInput.adapterType,
       await normalizeNewAgentRuntimeConfig(createInput.adapterType, createInput.runtimeConfig),
       normalizedAdapterConfig,
+      createInput.defaultEnvironmentId ?? null,
     );
     await assertAgentEnvironmentSelection(companyId, createInput.adapterType, createInput.defaultEnvironmentId);
     await assertAgentDefaultEnvironmentSelection(companyId, createInput.defaultEnvironmentId, {
@@ -3136,19 +3275,42 @@ export function agentRoutes(
         ),
       );
       const normalizedEffectiveAdapterConfig = await normalizeMediatedAdapterConfigForPersistence({
+        req,
         companyId: existing.companyId,
         adapterType: requestedAdapterType,
         adapterConfig: effectiveAdapterConfig,
+        environmentId: typeof patchData.defaultEnvironmentId === "string"
+          ? patchData.defaultEnvironmentId
+          : (existing.defaultEnvironmentId ?? null),
+      });
+      patchData.adapterConfig = syncInstructionsBundleConfigFromFilePath(existing, normalizedEffectiveAdapterConfig);
+    } else if (
+      req.actor.type !== "agent"
+      && requestedAdapterType === "opencode_9router"
+      && !asNonEmptyString((asRecord(existing.adapterConfig) ?? {}).combo)
+    ) {
+      const normalizedEffectiveAdapterConfig = await normalizeMediatedAdapterConfigForPersistence({
+        req,
+        companyId: existing.companyId,
+        adapterType: requestedAdapterType,
+        adapterConfig: asRecord(existing.adapterConfig) ?? {},
+        environmentId: typeof patchData.defaultEnvironmentId === "string"
+          ? patchData.defaultEnvironmentId
+          : (existing.defaultEnvironmentId ?? null),
       });
       patchData.adapterConfig = syncInstructionsBundleConfigFromFilePath(existing, normalizedEffectiveAdapterConfig);
     }
     if (requestedRuntimeConfig) {
       const baseAdapterConfig = asRecord(patchData.adapterConfig) ?? asRecord(existing.adapterConfig) ?? {};
       patchData.runtimeConfig = await normalizeRuntimeConfigAdapterConfigsForPersistence(
+        req,
         existing.companyId,
         requestedAdapterType,
         requestedRuntimeConfig,
         baseAdapterConfig,
+        typeof patchData.defaultEnvironmentId === "string"
+          ? patchData.defaultEnvironmentId
+          : (existing.defaultEnvironmentId ?? null),
       );
     }
     if (touchesAdapterConfiguration || Object.prototype.hasOwnProperty.call(patchData, "defaultEnvironmentId")) {

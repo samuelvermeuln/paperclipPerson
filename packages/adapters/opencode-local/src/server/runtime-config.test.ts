@@ -171,6 +171,29 @@ describe("prepareOpenCodeRuntimeConfig", () => {
     await prepared.cleanup();
   });
 
+  it("keeps 9Router apiKey as an env placeholder in the temporary runtime config", async () => {
+    const configHome = await makeConfigHome({ permission: { read: "allow" } });
+    const prepared = await prepareOpenCodeRuntimeConfig({
+      env: { XDG_CONFIG_HOME: configHome, NINEROUTER_API_KEY: "nr-real-secret" },
+      config: {
+        paperclipNineRouter: {
+          baseUrl: "http://9router:20128/v1",
+          apiKeyEnv: "NINEROUTER_API_KEY",
+          combos: ["auto", "dev"],
+          smallCombo: "auto",
+        },
+        model: "9router/dev",
+      },
+    });
+    cleanupPaths.add(prepared.env.XDG_CONFIG_HOME);
+    const runtimeConfig = JSON.parse(
+      await fs.readFile(path.join(prepared.env.XDG_CONFIG_HOME, "opencode", "opencode.json"), "utf8"),
+    ) as { provider?: Record<string, { options?: { apiKey?: string } }> };
+    expect(runtimeConfig.provider?.["9router"]?.options?.apiKey).toBe("{env:NINEROUTER_API_KEY}");
+    expect(JSON.stringify(runtimeConfig)).not.toContain("nr-real-secret");
+    await prepared.cleanup();
+  });
+
   it("ignores malformed PAPERCLIP_OPENCODE_PROVIDERS without writing a provider block and surfaces a note", async () => {
     const configHome = await makeConfigHome({ permission: { read: "allow" } });
     const prepared = await prepareOpenCodeRuntimeConfig({
@@ -307,6 +330,31 @@ describe("prepareOpenCodeRuntimeConfig", () => {
       await fs.readFile(path.join(prepared.env.XDG_CONFIG_HOME, "opencode", "opencode.json"), "utf8"),
     ) as Record<string, unknown>;
     expect(runtimeConfig.provider).toBeUndefined();
+    await prepared.cleanup();
+  });
+
+  it("still injects 9Router provider config when permission skipping is disabled", async () => {
+    const configHome = await makeConfigHome({ permission: { read: "allow" } });
+    const prepared = await prepareOpenCodeRuntimeConfig({
+      env: { XDG_CONFIG_HOME: configHome, NINEROUTER_API_KEY: "nr-real-secret" },
+      config: {
+        dangerouslySkipPermissions: false,
+        paperclipNineRouter: {
+          baseUrl: "http://9router:20128/v1",
+          apiKeyEnv: "NINEROUTER_API_KEY",
+          combos: ["auto", "dev"],
+          smallCombo: "auto",
+        },
+        model: "9router/dev",
+      },
+    });
+    cleanupPaths.add(prepared.env.XDG_CONFIG_HOME);
+    const runtimeConfig = JSON.parse(
+      await fs.readFile(path.join(prepared.env.XDG_CONFIG_HOME, "opencode", "opencode.json"), "utf8"),
+    ) as { permission?: Record<string, unknown>; provider?: Record<string, { options?: { apiKey?: string } }> };
+    expect(runtimeConfig.permission).toEqual({ read: "allow" });
+    expect(runtimeConfig.provider?.["9router"]?.options?.apiKey).toBe("{env:NINEROUTER_API_KEY}");
+    expect(prepared.notes).toContain("Injected dynamic 9Router OpenCode provider with 2 combo model(s).");
     await prepared.cleanup();
   });
 

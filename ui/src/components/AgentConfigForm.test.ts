@@ -12,6 +12,7 @@ describe("supportsAdapterModelRefresh", () => {
 
   it("keeps the refresh action hidden for adapters without a live refresh hook", () => {
     expect(supportsAdapterModelRefresh("opencode_local")).toBe(false);
+    expect(supportsAdapterModelRefresh("opencode_9router")).toBe(true);
     expect(supportsAdapterModelRefresh("process")).toBe(false);
   });
 });

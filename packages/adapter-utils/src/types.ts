@@ -577,6 +577,13 @@ export interface CreateConfigValues {
   extraArgs: string;
   envVars: string;
   envBindings: Record<string, unknown>;
+  opencode9RouterBaseUrl?: string;
+  opencode9RouterApiKeyEnv?: string;
+  opencode9RouterSmallCombo?: string;
+  opencode9RouterUsePrimaryAsSmallCombo?: boolean;
+  opencode9RouterComboPrefix?: string;
+  opencode9RouterIgnoreGlobalComboPrefix?: boolean;
+  opencode9RouterModelsCacheTtlSeconds?: number;
   url: string;
   bootstrapPrompt: string;
   payloadTemplateJson?: string;

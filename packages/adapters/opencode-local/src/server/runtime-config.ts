@@ -92,6 +92,51 @@ function parseConfiguredModelRef(raw: unknown): { provider: string; model: strin
   return { provider: trimmed.slice(0, slash), model: trimmed.slice(slash + 1) };
 }
 
+function parseNineRouterRuntimeConfig(raw: unknown): {
+  baseUrl: string;
+  apiKeyEnv: string;
+  combos: string[];
+  smallCombo: string | null;
+} | null {
+  if (!isPlainObject(raw)) return null;
+  const baseUrl = typeof raw.baseUrl === "string" ? raw.baseUrl.trim() : "";
+  const apiKeyEnv = typeof raw.apiKeyEnv === "string" ? raw.apiKeyEnv.trim() : "";
+  const combos = Array.isArray(raw.combos)
+    ? raw.combos.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0)
+    : [];
+  const smallCombo = typeof raw.smallCombo === "string" && raw.smallCombo.trim().length > 0
+    ? raw.smallCombo.trim()
+    : null;
+  if (!baseUrl || !apiKeyEnv || combos.length === 0) return null;
+  return { baseUrl, apiKeyEnv, combos, smallCombo };
+}
+
+function buildNineRouterProviderConfig(input: {
+  baseUrl: string;
+  apiKeyEnv: string;
+  combos: string[];
+}): Record<string, unknown> {
+  const models = Object.fromEntries(
+    input.combos.map((combo) => [
+      combo,
+      {
+        name: `9Router — ${combo}`,
+      },
+    ]),
+  );
+  return {
+    "9router": {
+      npm: "@ai-sdk/openai-compatible",
+      name: "9Router",
+      options: {
+        baseURL: input.baseUrl,
+        apiKey: `{env:${input.apiKeyEnv}}`,
+      },
+      models,
+    },
+  };
+}
+
 async function readJsonObject(filepath: string): Promise<Record<string, unknown>> {
   try {
     const raw = await fs.readFile(filepath, "utf8");
@@ -108,33 +153,15 @@ export async function prepareOpenCodeRuntimeConfig(input: {
   targetIsRemote?: boolean;
 }): Promise<PreparedOpenCodeRuntimeConfig> {
   const skipPermissions = asBoolean(input.config.dangerouslySkipPermissions, true);
-  if (!skipPermissions) {
-    return {
-      env: input.env,
-      notes: [],
-      cleanup: async () => {},
-    };
-  }
-
-  // For remote execution targets the host XDG_CONFIG_HOME path is meaningless
-  // (and actively harmful — it leaks a macOS-only path into the remote Linux
-  // env). Callers that need to ship a runtime opencode config to the remote
-  // box do that via prepareAdapterExecutionTargetRuntime in execute.ts; this
-  // host-fs helper is local-only.
-  if (input.targetIsRemote) {
-    return {
-      env: input.env,
-      notes: [],
-      cleanup: async () => {},
-    };
-  }
 
   const sourceConfigDir = path.join(resolveXdgConfigHome(input.env), "opencode");
   const runtimeConfigHome = await fs.mkdtemp(path.join(os.tmpdir(), "paperclip-opencode-config-"));
   const runtimeConfigDir = path.join(runtimeConfigHome, "opencode");
   const runtimeConfigPath = path.join(runtimeConfigDir, "opencode.json");
 
+  await fs.chmod(runtimeConfigHome, 0o700).catch(() => {});
   await fs.mkdir(runtimeConfigDir, { recursive: true });
+  await fs.chmod(runtimeConfigDir, 0o700).catch(() => {});
   try {
     await fs.cp(sourceConfigDir, runtimeConfigDir, {
       recursive: true,
@@ -152,9 +179,7 @@ export async function prepareOpenCodeRuntimeConfig(input: {
   const existingPermission = isPlainObject(existingConfig.permission)
     ? existingConfig.permission
     : {};
-  const notes = [
-    "Injected runtime OpenCode config with permission.external_directory=allow to avoid headless approval prompts.",
-  ];
+  const notes: string[] = [];
 
   // Merge gateway/custom provider definitions supplied via PAPERCLIP_OPENCODE_PROVIDERS
   // (a JSON object in OpenCode's `provider` shape). OpenCode resolves a `--model
@@ -169,13 +194,28 @@ export async function prepareOpenCodeRuntimeConfig(input: {
     resolveEnv,
     notes,
   );
+  const nineRouterConfig = parseNineRouterRuntimeConfig(input.config.paperclipNineRouter);
+  const nineRouterProviders = nineRouterConfig
+    ? buildNineRouterProviderConfig({
+        baseUrl: nineRouterConfig.baseUrl,
+        apiKeyEnv: nineRouterConfig.apiKeyEnv,
+        combos: nineRouterConfig.combos,
+      })
+    : null;
   const existingProvider = isPlainObject(existingConfig.provider) ? existingConfig.provider : {};
-  let nextProvider = gatewayProviders
-    ? { ...existingProvider, ...gatewayProviders }
-    : existingProvider;
+  let nextProvider = {
+    ...existingProvider,
+    ...(gatewayProviders ?? {}),
+    ...(nineRouterProviders ?? {}),
+  };
   if (gatewayProviders) {
     notes.push(
       `Injected ${Object.keys(gatewayProviders).length} custom OpenCode provider(s) from PAPERCLIP_OPENCODE_PROVIDERS: ${Object.keys(gatewayProviders).join(", ")}.`,
+    );
+  }
+  if (nineRouterProviders) {
+    notes.push(
+      `Injected dynamic 9Router OpenCode provider with ${nineRouterConfig?.combos.length ?? 0} combo model(s).`,
     );
   }
 
@@ -205,13 +245,22 @@ export async function prepareOpenCodeRuntimeConfig(input: {
     }
   }
 
-  const nextConfig: Record<string, unknown> = {
-    ...existingConfig,
-    permission: {
-      ...existingPermission,
-      external_directory: "allow",
-    },
-  };
+  const nextConfig: Record<string, unknown> = skipPermissions
+    ? {
+        ...existingConfig,
+        permission: {
+          ...existingPermission,
+          external_directory: "allow",
+        },
+      }
+    : {
+        ...existingConfig,
+      };
+  if (skipPermissions) {
+    notes.push(
+      "Injected runtime OpenCode config with permission.external_directory=allow to avoid headless approval prompts.",
+    );
+  }
   if (Object.keys(nextProvider).length > 0) {
     nextConfig.provider = nextProvider;
   }
@@ -222,12 +271,25 @@ export async function prepareOpenCodeRuntimeConfig(input: {
   // for the anthropic provider); when that provider is repointed at a gateway that
   // does not serve that exact model, the title-gen call fails and aborts the run.
   // Setting small_model to a gateway-served model keeps every call on supported models.
-  const smallModel = (input.env.PAPERCLIP_OPENCODE_SMALL_MODEL ?? process.env.PAPERCLIP_OPENCODE_SMALL_MODEL)?.trim();
+  const smallModel = (
+    input.env.PAPERCLIP_OPENCODE_SMALL_MODEL
+      ?? process.env.PAPERCLIP_OPENCODE_SMALL_MODEL
+      ?? (nineRouterConfig?.smallCombo ? `9router/${nineRouterConfig.smallCombo}` : "")
+  )?.trim();
   if (smallModel) {
     nextConfig.small_model = smallModel;
     notes.push(`Pinned OpenCode small_model to ${smallModel}.`);
   }
+  if (!skipPermissions && notes.length === 0) {
+    await fs.rm(runtimeConfigHome, { recursive: true, force: true });
+    return {
+      env: input.env,
+      notes: [],
+      cleanup: async () => {},
+    };
+  }
   await fs.writeFile(runtimeConfigPath, `${JSON.stringify(nextConfig, null, 2)}\n`, "utf8");
+  await fs.chmod(runtimeConfigPath, 0o600).catch(() => {});
 
   return {
     env: {

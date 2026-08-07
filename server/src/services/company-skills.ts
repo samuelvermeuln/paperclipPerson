@@ -6296,7 +6296,7 @@ export function companySkillService(db: Db) {
       name: agent.name,
       role: agent.role,
       adapterType: agent.adapterType,
-      model: asString(adapterConfig.model) ?? asString(runtimeConfig.model) ?? null,
+      model: asString(adapterConfig.model) ?? asString(adapterConfig.combo) ?? asString(runtimeConfig.model) ?? null,
       adapterConfig,
       runtimeConfig,
       assignedSkills: isPlainRecord(adapterConfig.paperclipSkillSync)

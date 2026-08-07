@@ -19,6 +19,7 @@ import { DEFAULT_CODEX_LOCAL_BYPASS_APPROVALS_AND_SANDBOX } from "@paperclipai/a
 import { DEFAULT_CURSOR_LOCAL_MODEL } from "@paperclipai/adapter-cursor-local";
 import { DEFAULT_GEMINI_LOCAL_MODEL } from "@paperclipai/adapter-gemini-local";
 import { DEFAULT_OPENCODE_LOCAL_MODEL } from "@paperclipai/adapter-opencode-local";
+import { NINEROUTER_ALL_COMBOS_SENTINEL } from "@paperclipai/adapter-opencode-9router";
 import {
   Popover,
   PopoverContent,
@@ -120,7 +121,9 @@ const emptyOverlay: AgentConfigOverlay = {
 const EMPTY_ENV: Record<string, EnvBinding> = {};
 
 export function supportsAdapterModelRefresh(adapterType: string): boolean {
-  return adapterType === "claude_local" || adapterType === "codex_local";
+  return adapterType === "claude_local"
+    || adapterType === "codex_local"
+    || adapterType === "opencode_9router";
 }
 
 function isOverlayDirty(o: AgentConfigOverlay): boolean {
@@ -473,24 +476,87 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
   const inheritedEnvironmentLabel = instanceDefaultEnvironment
     ? `${instanceDefaultEnvironment.name} (${instanceDefaultEnvironment.driver})`
     : "Local";
+  const isOpenCode9Router = adapterType === "opencode_9router";
+  const currentNineRouterBaseUrl = isCreate
+    ? (val!.opencode9RouterBaseUrl ?? "")
+    : eff("adapterConfig", "baseUrl", String(config.baseUrl ?? ""));
+  const currentNineRouterApiKeyEnv = isCreate
+    ? (val!.opencode9RouterApiKeyEnv ?? "NINEROUTER_API_KEY")
+    : eff("adapterConfig", "apiKeyEnv", String(config.apiKeyEnv ?? "NINEROUTER_API_KEY"));
+  const currentNineRouterRawComboPrefix = isCreate
+    ? (val!.opencode9RouterComboPrefix ?? "")
+    : eff("adapterConfig", "comboPrefix", String(config.comboPrefix ?? ""));
+  const currentNineRouterIgnoreGlobalComboPrefix = isCreate
+    ? Boolean(val!.opencode9RouterIgnoreGlobalComboPrefix)
+    : currentNineRouterRawComboPrefix === NINEROUTER_ALL_COMBOS_SENTINEL
+      || (
+        currentNineRouterRawComboPrefix === ""
+        && Object.prototype.hasOwnProperty.call(config, "comboPrefix")
+        && String(config.comboPrefix ?? "") === ""
+      );
+  const currentNineRouterComboPrefix = currentNineRouterIgnoreGlobalComboPrefix
+    ? ""
+    : currentNineRouterRawComboPrefix;
+  const currentNineRouterCacheTtl = isCreate
+    ? Number(val!.opencode9RouterModelsCacheTtlSeconds ?? 60)
+    : Number(eff("adapterConfig", "modelsCacheTtlSeconds", Number(config.modelsCacheTtlSeconds ?? 60)));
+  const nineRouterDiscoveryKey = isOpenCode9Router
+    ? JSON.stringify([
+        currentNineRouterBaseUrl,
+        currentNineRouterApiKeyEnv,
+        currentNineRouterComboPrefix,
+        currentNineRouterIgnoreGlobalComboPrefix,
+        currentNineRouterCacheTtl,
+      ])
+    : "";
 
   // Fetch adapter models for the effective adapter type
   const modelQueryKey = selectedCompanyId
-    ? queryKeys.agents.adapterModels(selectedCompanyId, adapterType, currentDefaultEnvironmentId || null)
-    : ["agents", "none", "adapter-models", adapterType];
+    ? queryKeys.agents.adapterModels(
+        selectedCompanyId,
+        adapterType,
+        currentDefaultEnvironmentId || null,
+        nineRouterDiscoveryKey,
+      )
+    : ["agents", "none", "adapter-models", adapterType, null, nineRouterDiscoveryKey];
   const {
     data: fetchedModels,
     error: fetchedModelsError,
+    refetch: refetchModels,
+    isLoading: loadingFetchedModels,
+    isFetching: fetchingFetchedModels,
   } = useQuery({
     queryKey: modelQueryKey,
-    queryFn: () => agentsApi.adapterModels(selectedCompanyId!, adapterType, {
+    queryFn: () => agentsApi.adapterModelsDetailed(selectedCompanyId!, adapterType, {
       environmentId: currentDefaultEnvironmentId || null,
+      ...(isOpenCode9Router
+        ? {
+            baseUrl: currentNineRouterBaseUrl || null,
+            apiKeyEnv: currentNineRouterApiKeyEnv || null,
+            comboPrefix: currentNineRouterIgnoreGlobalComboPrefix
+              ? ""
+              : (currentNineRouterComboPrefix || null),
+            modelsCacheTtlSeconds: Number.isFinite(currentNineRouterCacheTtl)
+              ? currentNineRouterCacheTtl
+              : null,
+          }
+        : {}),
     }),
     enabled: Boolean(selectedCompanyId),
   });
   const [refreshModelsError, setRefreshModelsError] = useState<string | null>(null);
   const [refreshingModels, setRefreshingModels] = useState(false);
-  const models = fetchedModels ?? externalModels ?? [];
+  const models = fetchedModels?.models ?? externalModels ?? [];
+  const loadingAdapterModels = loadingFetchedModels || fetchingFetchedModels;
+  const nineRouterDiscoveryCached = fetchedModels?.cached ?? false;
+  const nineRouterDiscoveryFetchedAt = fetchedModels?.fetchedAt ?? null;
+  useEffect(() => {
+    if (!isCreate || adapterType !== "opencode_9router") return;
+    if ((val?.model ?? "").trim().length > 0) return;
+    const firstCombo = models[0]?.id ?? "";
+    if (!firstCombo) return;
+    set!({ model: firstCombo });
+  }, [adapterType, isCreate, models, set, val?.model]);
   const adapterCommandField = "command";
   const {
     data: detectedModelData,
@@ -505,7 +571,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
       }
       return agentsApi.detectModel(selectedCompanyId, adapterType);
     },
-    enabled: Boolean(selectedCompanyId && isLocal && adapterType !== "opencode_local"),
+    enabled: Boolean(selectedCompanyId && isLocal && adapterType !== "opencode_local" && adapterType !== "opencode_9router"),
   });
   const detectedModel = detectedModelData?.model ?? null;
   const detectedModelCandidates = detectedModelData?.candidates ?? [];
@@ -536,6 +602,10 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
   const [modelOpen, setModelOpen] = useState(false);
   const [cheapModelOpen, setCheapModelOpen] = useState(false);
   const [thinkingEffortOpen, setThinkingEffortOpen] = useState(false);
+  useEffect(() => {
+    if (!isOpenCode9Router || !modelOpen) return;
+    void refetchModels();
+  }, [isOpenCode9Router, modelOpen, refetchModels]);
 
   // Cheap model profile state — only relevant when the adapter advertises
   // `supportsModelProfiles`. Defaults are sourced from the adapter's
@@ -694,12 +764,13 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
         agentDefaultEnvironmentId: rawCurrentDefaultEnvironmentId || null,
         instanceDefaultEnvironmentId: settings?.defaultEnvironmentId ?? null,
       });
+      const primaryModelLabel = adapterType === "opencode_9router" ? "Primary combo" : "Primary model";
       const testResults: Array<{ label: string; model: string | null; result: AdapterEnvironmentTestResult }> = [
         {
-          label: "Primary model",
+          label: primaryModelLabel,
           model: primaryModel,
           result: await runEnvironmentTestCase(
-            "Primary model",
+            primaryModelLabel,
             primaryModel,
             buildAdapterConfigForTest(adapterConfigPatch),
             environmentId,
@@ -805,7 +876,9 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
   // Current model for display
   const currentModelValue = isCreate
     ? val!.model ?? ""
-    : eff("adapterConfig", "model", String(config.model ?? ""));
+    : adapterType === "opencode_9router"
+      ? (eff("adapterConfig", "combo", String(config.combo ?? "")) || (models[0]?.id ?? ""))
+      : eff("adapterConfig", "model", String(config.model ?? ""));
   const currentModelId = typeof currentModelValue === "string" ? currentModelValue : "";
 
   async function handleRefreshModels() {
@@ -813,7 +886,23 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
     setRefreshingModels(true);
     setRefreshModelsError(null);
     try {
-      const refreshed = await agentsApi.adapterModels(selectedCompanyId, adapterType, { refresh: true });
+      const refreshed = await agentsApi.adapterModelsDetailed(selectedCompanyId, adapterType, {
+        refresh: true,
+        environmentId: currentDefaultEnvironmentId || null,
+        ...(isOpenCode9Router
+          ? {
+              baseUrl: currentNineRouterBaseUrl || null,
+              apiKeyEnv: currentNineRouterApiKeyEnv || null,
+              comboPrefix: currentNineRouterIgnoreGlobalComboPrefix
+                ? ""
+                : (currentNineRouterComboPrefix || null),
+              modelsCacheTtlSeconds: Number.isFinite(currentNineRouterCacheTtl)
+                ? currentNineRouterCacheTtl
+                : null,
+              combo: currentModelId || null,
+            }
+          : {}),
+      });
       queryClient.setQueryData(modelQueryKey, refreshed);
     } catch (error) {
       setRefreshModelsError(error instanceof Error ? error.message : "Failed to refresh adapter models.");
@@ -851,7 +940,9 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
         : adapterType === "opencode_local"
           ? eff("adapterConfig", "variant", String(config.variant ?? ""))
           : eff("adapterConfig", "effort", String(config.effort ?? ""));
-  const showThinkingEffort = adapterType !== "gemini_local" && adapterType !== "cursor_cloud";
+  const showThinkingEffort = adapterType !== "gemini_local"
+    && adapterType !== "cursor_cloud"
+    && adapterType !== "opencode_9router";
   const codexSearchEnabled = adapterType === "codex_local"
     ? (isCreate ? Boolean(val!.search) : eff("adapterConfig", "search", Boolean(config.search)))
     : false;
@@ -1276,13 +1367,16 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
                       pi_local: "pi",
                       cursor: "agent",
                       opencode_local: "opencode",
+                      opencode_9router: "opencode",
                     } as Record<string, string>)[adapterType] ?? adapterType.replace(/_local$/, "")
                   }
                 />
               </Field>
 
               {supportsModelProfiles && (
-                <div className="text-(length:--text-micro) uppercase tracking-wide text-muted-foreground">Primary model</div>
+                <div className="text-(length:--text-micro) uppercase tracking-wide text-muted-foreground">
+                  {adapterType === "opencode_9router" ? "Primary combo" : "Primary model"}
+                </div>
               )}
               <ModelDropdown
                 models={models}
@@ -1290,7 +1384,11 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
                 onChange={(v) =>
                   isCreate
                     ? set!({ model: v })
-                    : mark("adapterConfig", "model", v || undefined)
+                    : mark(
+                        "adapterConfig",
+                        adapterType === "opencode_9router" ? "combo" : "model",
+                        v || undefined,
+                      )
                 }
                 open={modelOpen}
                 onOpenChange={setModelOpen}
@@ -1300,7 +1398,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
                 creatable
                 detectedModel={detectedModel}
                 detectedModelCandidates={[]}
-                onDetectModel={adapterType === "opencode_local"
+                onDetectModel={adapterType === "opencode_local" || adapterType === "opencode_9router"
                   ? undefined
                   : async () => {
                       const result = await refetchDetectedModel();
@@ -1312,6 +1410,9 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
                     : undefined
                 }
                 refreshingModels={refreshingModels}
+                refreshModelsLabel={adapterType === "opencode_9router" ? "Refresh combos" : undefined}
+                loadingModels={loadingAdapterModels}
+                label={adapterType === "opencode_9router" ? "Combo" : "Model"}
                 detectModelLabel="Detect model"
                 emptyDetectHint="No model detected. Select or enter one manually."
               />
@@ -1328,6 +1429,23 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
                 && currentDefaultEnvironment.driver !== "local" && (
                 <p className="text-xs text-muted-foreground">
                   Live OpenCode model discovery only runs for Local environments. Using the curated list and manual entry for {currentDefaultEnvironment.name}.
+                </p>
+              )}
+              {adapterType === "opencode_9router" && models.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  {models.length} combo{models.length === 1 ? "" : "s"} found in 9Router.
+                  {nineRouterDiscoveryFetchedAt
+                    ? ` ${nineRouterDiscoveryCached ? "Cached" : "Fetched"} ${new Date(nineRouterDiscoveryFetchedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}.`
+                    : ""}
+                </p>
+              )}
+              {adapterType === "opencode_9router"
+                && currentModelId
+                && !models.some((entry) => entry.id === currentModelId) && (
+                <p className="text-xs text-amber-500">
+                  {models.length > 0
+                    ? "Saved combo is no longer present in current 9Router discovery."
+                    : "Saved combo is no longer present in current 9Router discovery, or the current discovery returned no combos."}
                 </p>
               )}
 
@@ -1670,7 +1788,7 @@ export function AdapterTypeDropdown({
       <PopoverTrigger asChild>
         <button className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-sm hover:bg-accent/50 transition-colors w-full justify-between">
           <span className="inline-flex min-w-0 items-center gap-1.5">
-            {value === "opencode_local" ? <OpenCodeLogoIcon className="h-3.5 w-3.5" /> : null}
+            {value === "opencode_local" || value === "opencode_9router" ? <OpenCodeLogoIcon className="h-3.5 w-3.5" /> : null}
             <span className="truncate">{adapterLabels[value] ?? getAdapterLabel(value)}</span>
             {selectedDisplay.experimental && <ExperimentalBadge />}
           </span>
@@ -1697,7 +1815,7 @@ export function AdapterTypeDropdown({
             }}
           >
             <span className="inline-flex items-center gap-1.5">
-              {item.value === "opencode_local" ? <OpenCodeLogoIcon className="h-3.5 w-3.5" /> : null}
+              {item.value === "opencode_local" || item.value === "opencode_9router" ? <OpenCodeLogoIcon className="h-3.5 w-3.5" /> : null}
               <span>{item.label}</span>
               {item.experimental && <ExperimentalBadge />}
             </span>
@@ -1734,6 +1852,9 @@ export function ModelDropdown({
   onDetectModel,
   onRefreshModels,
   refreshingModels,
+  refreshModelsLabel,
+  loadingModels,
+  label,
   detectModelLabel,
   emptyDetectHint,
   defaultLabel,
@@ -1752,6 +1873,9 @@ export function ModelDropdown({
   onDetectModel?: () => Promise<string | null>;
   onRefreshModels?: () => Promise<void>;
   refreshingModels?: boolean;
+  refreshModelsLabel?: string;
+  loadingModels?: boolean;
+  label?: string;
   detectModelLabel?: string;
   emptyDetectHint?: string;
   defaultLabel?: string;
@@ -1828,7 +1952,7 @@ export function ModelDropdown({
   }
 
   return (
-    <Field label="Model" hint={help.model}>
+    <Field label={label ?? "Model"} hint={help.model}>
       <Popover
         open={open}
         onOpenChange={(nextOpen) => {
@@ -1900,7 +2024,7 @@ export function ModelDropdown({
                 <path d="M21 12a9 9 0 0 1-15.28 6.36L3 16" />
                 <path d="M8 16H3v5" />
               </svg>
-              {refreshingModels ? "Refreshing..." : "Refresh models"}
+              {refreshingModels ? "Refreshing..." : (refreshModelsLabel ?? "Refresh models")}
             </button>
           )}
           {value && (!models.some((m) => m.id === value) || promotedModelIds.has(value)) && (
@@ -2025,9 +2149,11 @@ export function ModelDropdown({
             {filteredModels.length === 0 && !canCreateManualModel && promotedModelIds.size === 0 && (
               <div className="px-2 py-2 space-y-2">
                 <p className="text-xs text-muted-foreground">
-                  {onDetectModel
-                    ? (emptyDetectHint ?? "No model detected yet. Enter a provider/model manually.")
-                    : "No models found."}
+                  {loadingModels
+                    ? "Loading models..."
+                    : onDetectModel
+                      ? (emptyDetectHint ?? "No model detected yet. Enter a provider/model manually.")
+                      : "No models found."}
                 </p>
               </div>
             )}

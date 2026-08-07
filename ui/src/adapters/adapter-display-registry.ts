@@ -105,6 +105,11 @@ const adapterDisplayMap: Record<string, AdapterDisplayInfo> = {
     description: "OpenCode multi-provider harness",
     icon: OpenCodeLogoIcon,
   },
+  opencode_9router: {
+    label: "9Router via OpenCode",
+    description: "Dynamic 9Router combos on OpenCode runtime",
+    icon: OpenCodeLogoIcon,
+  },
   pi_local: {
     label: "Pi",
     description: "Pi harness",

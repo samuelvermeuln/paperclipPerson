@@ -214,6 +214,48 @@ browser. The CLI fallback remains:
 pnpm paperclipai auth bootstrap-ceo
 ```
 
+## 9Router via OpenCode
+
+Paperclip now supports a dedicated `opencode_9router` adapter that keeps responsibilities split like this:
+
+- Paperclip selects combo and orchestrates run/session
+- OpenCode executes agent runtime and tools
+- 9Router routes each combo to real upstream LLMs and fallback logic
+
+Minimum env:
+
+```env
+NINEROUTER_BASE_URL=http://9router:20128/v1
+NINEROUTER_API_KEY=nr_xxxxxxxxx
+```
+
+Optional env:
+
+```env
+NINEROUTER_DEFAULT_COMBO=auto
+NINEROUTER_SMALL_COMBO=auto
+NINEROUTER_MODELS_CACHE_TTL_SECONDS=60
+NINEROUTER_COMBO_PREFIX=pc-
+```
+
+Docker example:
+
+```yaml
+services:
+  paperclip:
+    environment:
+      NINEROUTER_BASE_URL: http://9router:20128/v1
+      NINEROUTER_API_KEY: ${NINEROUTER_API_KEY}
+      NINEROUTER_DEFAULT_COMBO: auto
+```
+
+Notes:
+
+- Inside containers, `localhost` points at Paperclip container itself. Use Docker DNS names such as `http://9router:20128/v1` when 9Router runs beside Paperclip.
+- New combos appear without redeploy. Open agent config, click `Refresh combos`, then pick new combo.
+- Per agent you can force `small_model` to reuse the primary combo and optionally ignore a global `NINEROUTER_COMBO_PREFIX` so one agent can see all combos while others stay filtered.
+- Paperclip stores only `apiKeyEnv` in agent config by default. The real API key stays in Paperclip process environment.
+
 For Tailscale-only reachability on a detected tailnet address:
 
 ```sh

@@ -43,6 +43,7 @@ const REMOTE_MANAGED_ADAPTERS = new Set<AgentAdapterType>([
   "gemini_local",
   "grok_local",
   "opencode_local",
+  "opencode_9router",
   "pi_local",
 ]);
 

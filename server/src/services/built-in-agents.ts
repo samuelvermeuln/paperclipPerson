@@ -21,6 +21,11 @@ import {
 import { companySkillService } from "./company-skills.js";
 import { routineService } from "./routines.js";
 import { accessService } from "./access.js";
+import {
+  applyNineRouterAgentConfigDefaults,
+  discover9RouterCombos,
+  resolve9RouterConfig,
+} from "@paperclipai/adapter-opencode-9router/server";
 import { listAdapterModels } from "../adapters/registry.js";
 
 export type BuiltInAgentStatus = "not_provisioned" | "pending_approval" | "needs_setup" | "ready" | "paused";
@@ -716,7 +721,10 @@ function assertAdapterAllowed(definition: BuiltInAgentDefinition, adapterType: s
   }
 }
 
-function hasCompleteAdapterConfig(adapterType: string, adapterConfig: unknown) {
+function hasCompleteAdapterConfig(
+  adapterType: string,
+  adapterConfig: unknown,
+) {
   if (!isPlainRecord(adapterConfig)) return false;
   if (["process", "command"].includes(adapterType)) {
     return nonEmptyString(adapterConfig.command) || nonEmptyString(adapterConfig.script);
@@ -727,10 +735,21 @@ function hasCompleteAdapterConfig(adapterType: string, adapterConfig: unknown) {
   if (adapterType === "openclaw_gateway" || adapterType === "hermes_gateway") {
     return nonEmptyString(adapterConfig.baseUrl) || nonEmptyString(adapterConfig.url);
   }
+  if (adapterType === "opencode_9router") {
+    if (nonEmptyString(adapterConfig.combo)) return true;
+    const apiKeyEnv = typeof adapterConfig.apiKeyEnv === "string" && adapterConfig.apiKeyEnv.trim().length > 0
+      ? adapterConfig.apiKeyEnv.trim()
+      : "NINEROUTER_API_KEY";
+    const hasApiKey = nonEmptyString(process.env[apiKeyEnv]);
+    const hasBaseUrl = nonEmptyString(adapterConfig.baseUrl) || nonEmptyString(process.env.NINEROUTER_BASE_URL);
+    return Boolean(hasBaseUrl && hasApiKey);
+  }
   return nonEmptyString(adapterConfig.model);
 }
 
-export function deriveBuiltInAgentStatus(agent: Pick<Agent, "adapterType" | "adapterConfig" | "status" | "pausedAt"> | null): BuiltInAgentStatus {
+export function deriveBuiltInAgentStatus(
+  agent: Pick<Agent, "adapterType" | "adapterConfig" | "status" | "pausedAt"> | null,
+): BuiltInAgentStatus {
   if (!agent) return "not_provisioned";
   if (agent.status === "pending_approval") return "pending_approval";
   if (agent.status === "paused" || agent.pausedAt) return "paused";
@@ -742,6 +761,17 @@ function builtInMetadata(definition: BuiltInAgentDefinition, existing?: Record<s
     key: definition.key,
     featureKeys: definition.featureKeys,
   });
+}
+
+async function resolveBuiltInProvisionInputDefaults(
+  input: BuiltInAgentProvisionInput,
+): Promise<BuiltInAgentProvisionInput> {
+  if (input.adapterType !== "opencode_9router") return input;
+  const adapterConfig = input.adapterConfig ?? {};
+  return {
+    ...input,
+    adapterConfig: await applyNineRouterAgentConfigDefaults(adapterConfig),
+  };
 }
 
 function definitionPatch(definition: BuiltInAgentDefinition, input: BuiltInAgentProvisionInput = {}) {
@@ -760,16 +790,39 @@ function definitionPatch(definition: BuiltInAgentDefinition, input: BuiltInAgent
   };
 }
 
+async function listBuiltInAgentModels(
+  adapterType: string,
+  adapterConfig: Record<string, unknown>,
+) {
+  if (adapterType !== "opencode_9router") {
+    return listAdapterModels(adapterType);
+  }
+  try {
+    const resolved = resolve9RouterConfig(adapterConfig);
+    return (await discover9RouterCombos({
+      baseUrl: resolved.normalizedBaseUrl,
+      apiKeyEnv: resolved.apiKeyEnv,
+      apiKey: resolved.apiKey,
+      comboPrefix: resolved.comboPrefix,
+      cacheTtlSeconds: resolved.modelsCacheTtlSeconds,
+      preferredCombo: resolved.combo,
+    })).models;
+  } catch {
+    return [];
+  }
+}
+
 async function assertKnownBuiltInAgentModel(
   definition: BuiltInAgentDefinition,
   input: BuiltInAgentProvisionInput,
 ) {
   const adapterType = input.adapterType ?? defaultAdapterType(definition);
   const adapterConfig = input.adapterConfig ?? definition.defaultAdapterConfig ?? {};
-  const model = typeof adapterConfig.model === "string" ? adapterConfig.model.trim() : "";
+  const configuredModelKey = adapterType === "opencode_9router" ? "combo" : "model";
+  const model = typeof adapterConfig[configuredModelKey] === "string" ? adapterConfig[configuredModelKey].trim() : "";
   if (!model || !hasCompleteAdapterConfig(adapterType, adapterConfig)) return;
 
-  const models = await listAdapterModels(adapterType);
+  const models = await listBuiltInAgentModels(adapterType, adapterConfig as Record<string, unknown>);
   if (models.length === 0 || models.some((candidate) => candidate.id === model)) return;
 
   throw unprocessable(`Model "${model}" is not available for adapter ${adapterType}.`, {
@@ -907,7 +960,7 @@ export function builtInAgentService(db: Db) {
     return {
       ...input,
       adapterType: candidate.adapterType,
-      adapterConfig: {},
+      adapterConfig: isPlainRecord(candidate.adapterConfig) ? { ...candidate.adapterConfig } : {},
     };
   }
 
@@ -1634,8 +1687,11 @@ export function builtInAgentService(db: Db) {
     const resolvedInput = existingPendingApproval || preserveExistingAdapter
       ? input
       : await defaultProvisionInput(companyId, definition, input);
+    const preparedInput = existingPendingApproval || preserveExistingAdapter
+      ? resolvedInput
+      : await resolveBuiltInProvisionInputDefaults(resolvedInput);
     if (!existingPendingApproval && !preserveExistingAdapter) {
-      await assertKnownBuiltInAgentModel(definition, resolvedInput);
+      await assertKnownBuiltInAgentModel(definition, preparedInput);
     }
     if (existing) {
       const patch: Partial<typeof agents.$inferInsert> = {
@@ -1643,15 +1699,15 @@ export function builtInAgentService(db: Db) {
       };
       if (
         !existingPendingApproval
-        && (resolvedInput.adapterType !== undefined || resolvedInput.adapterConfig !== undefined)
+        && (preparedInput.adapterType !== undefined || preparedInput.adapterConfig !== undefined)
       ) {
-        const adapterType = resolvedInput.adapterType ?? existing.adapterType;
+        const adapterType = preparedInput.adapterType ?? existing.adapterType;
         assertAdapterAllowed(definition, adapterType);
         patch.adapterType = adapterType;
-        patch.adapterConfig = resolvedInput.adapterConfig ?? existing.adapterConfig;
+        patch.adapterConfig = preparedInput.adapterConfig ?? existing.adapterConfig;
       }
-      if (!existingPendingApproval && resolvedInput.budgetMonthlyCents !== undefined) {
-        patch.budgetMonthlyCents = resolvedInput.budgetMonthlyCents;
+      if (!existingPendingApproval && preparedInput.budgetMonthlyCents !== undefined) {
+        patch.budgetMonthlyCents = preparedInput.budgetMonthlyCents;
       }
       if (
         !existingPendingApproval
@@ -1680,7 +1736,7 @@ export function builtInAgentService(db: Db) {
     let created: Agent;
     try {
       created = await agentSvc.create(companyId, {
-        ...definitionPatch(definition, resolvedInput),
+        ...definitionPatch(definition, preparedInput),
         status: definition.defaultStatus ?? "idle",
         pauseReason: definition.defaultStatus === "paused"
           ? `Built-in ${definition.displayName} is disabled until explicitly configured.`

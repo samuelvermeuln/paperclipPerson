@@ -38,6 +38,7 @@ export const AGENT_ADAPTER_TYPES = [
   "hermes_gateway",
   "hermes_local",
   "opencode_local",
+  "opencode_9router",
   "pi_local",
   "cursor",
   "openclaw_gateway",

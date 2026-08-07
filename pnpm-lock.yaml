@@ -73,6 +73,9 @@ importers:
       '@paperclipai/adapter-openclaw-gateway':
         specifier: workspace:*
         version: link:../packages/adapters/openclaw-gateway
+      '@paperclipai/adapter-opencode-9router':
+        specifier: workspace:*
+        version: link:../packages/adapters/opencode-9router
       '@paperclipai/adapter-opencode-local':
         specifier: workspace:*
         version: link:../packages/adapters/opencode-local
@@ -294,6 +297,25 @@ importers:
       '@types/ws':
         specifier: ^8.18.1
         version: 8.18.1
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+
+  packages/adapters/opencode-9router:
+    dependencies:
+      '@paperclipai/adapter-opencode-local':
+        specifier: workspace:*
+        version: link:../opencode-local
+      '@paperclipai/adapter-utils':
+        specifier: workspace:*
+        version: link:../../adapter-utils
+      picocolors:
+        specifier: ^1.1.1
+        version: 1.1.1
+    devDependencies:
+      '@types/node':
+        specifier: ^22.20.1
+        version: 22.20.1
       typescript:
         specifier: ^5.7.3
         version: 5.9.3
@@ -749,6 +771,9 @@ importers:
       '@paperclipai/adapter-openclaw-gateway':
         specifier: workspace:*
         version: link:../packages/adapters/openclaw-gateway
+      '@paperclipai/adapter-opencode-9router':
+        specifier: workspace:*
+        version: link:../packages/adapters/opencode-9router
       '@paperclipai/adapter-opencode-local':
         specifier: workspace:*
         version: link:../packages/adapters/opencode-local
@@ -921,6 +946,9 @@ importers:
       '@paperclipai/adapter-openclaw-gateway':
         specifier: workspace:*
         version: link:../packages/adapters/openclaw-gateway
+      '@paperclipai/adapter-opencode-9router':
+        specifier: workspace:*
+        version: link:../packages/adapters/opencode-9router
       '@paperclipai/adapter-opencode-local':
         specifier: workspace:*
         version: link:../packages/adapters/opencode-local

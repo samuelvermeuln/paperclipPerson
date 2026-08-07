@@ -100,6 +100,18 @@ import {
   modelProfiles as openCodeModelProfiles,
 } from "@paperclipai/adapter-opencode-local";
 import {
+  execute as openCode9RouterExecute,
+  listOpenCodeSkills as listOpenCode9RouterSkills,
+  syncOpenCodeSkills as syncOpenCode9RouterSkills,
+  testEnvironment as openCode9RouterTestEnvironment,
+  sessionCodec as openCode9RouterSessionCodec,
+  discover9RouterCombos,
+} from "@paperclipai/adapter-opencode-9router/server";
+import {
+  agentConfigurationDoc as openCode9RouterAgentConfigurationDoc,
+  models as openCode9RouterModels,
+} from "@paperclipai/adapter-opencode-9router";
+import {
   execute as openclawGatewayExecute,
   testEnvironment as openclawGatewayTestEnvironment,
 } from "@paperclipai/adapter-openclaw-gateway/server";
@@ -401,6 +413,40 @@ const openCodeLocalAdapter: ServerAdapterModule = {
   agentConfigurationDoc: openCodeAgentConfigurationDoc,
 };
 
+const openCode9RouterAdapter: ServerAdapterModule = {
+  type: "opencode_9router",
+  execute: openCode9RouterExecute,
+  testEnvironment: openCode9RouterTestEnvironment,
+  listSkills: listOpenCode9RouterSkills,
+  syncSkills: syncOpenCode9RouterSkills,
+  sessionCodec: openCode9RouterSessionCodec,
+  models: openCode9RouterModels,
+  sessionManagement: getAdapterSessionManagement("opencode_9router") ?? undefined,
+  listModels: async () => {
+    const baseUrl = process.env.NINEROUTER_BASE_URL?.trim() ?? "";
+    const apiKey = process.env.NINEROUTER_API_KEY?.trim() ?? "";
+    if (!baseUrl || !apiKey) return [];
+    try {
+      return (await discover9RouterCombos({
+        baseUrl,
+        apiKeyEnv: "NINEROUTER_API_KEY",
+        apiKey,
+        cacheTtlSeconds: Number.parseInt(process.env.NINEROUTER_MODELS_CACHE_TTL_SECONDS ?? "60", 10),
+        comboPrefix: process.env.NINEROUTER_COMBO_PREFIX,
+        preferredCombo: process.env.NINEROUTER_DEFAULT_COMBO,
+      })).models;
+    } catch {
+      return [];
+    }
+  },
+  supportsLocalAgentJwt: true,
+  supportsInstructionsBundle: true,
+  instructionsPathKey: "instructionsFilePath",
+  requiresMaterializedRuntimeSkills: true,
+  getRuntimeCommandSpec: (config) => buildNpmRuntimeCommandSpec(config, "opencode", "opencode-ai"),
+  agentConfigurationDoc: openCode9RouterAgentConfigurationDoc,
+};
+
 const piLocalAdapter: ServerAdapterModule = {
   type: "pi_local",
   execute: piExecute,
@@ -438,6 +484,7 @@ function registerBuiltInAdapters() {
     claudeLocalAdapter,
     codexLocalAdapter,
     openCodeLocalAdapter,
+    openCode9RouterAdapter,
     piLocalAdapter,
     cursorCloudAdapter,
     cursorLocalAdapter,

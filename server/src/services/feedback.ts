@@ -564,6 +564,7 @@ async function buildClaudeTraceFiles(input: {
 }
 
 async function buildOpenCodeTraceFiles(input: {
+  adapterType: string;
   sessionId: string | null;
   stdoutText: string;
   state: ReturnType<typeof createFeedbackRedactionState>;
@@ -577,7 +578,7 @@ async function buildOpenCodeTraceFiles(input: {
       raw: null as Record<string, unknown> | null,
       normalized: sanitizeFeedbackValue(
         {
-          adapterType: "opencode_local",
+          adapterType: input.adapterType,
           summary: parseOpenCodeJsonl(input.stdoutText),
         },
         input.state,
@@ -717,7 +718,7 @@ async function buildOpenCodeTraceFiles(input: {
   return {
     files,
     raw: {
-      adapterType: "opencode_local",
+      adapterType: input.adapterType,
       sessionId: input.sessionId,
       sessionFileFound: Boolean(sessionText),
       sessionDiffFound: Boolean(diffText),
@@ -728,7 +729,7 @@ async function buildOpenCodeTraceFiles(input: {
     },
     normalized: sanitizeFeedbackValue(
       {
-        adapterType: "opencode_local",
+        adapterType: input.adapterType,
         sessionId: input.sessionId,
         summary: parseOpenCodeJsonl(input.stdoutText),
       },
@@ -1602,8 +1603,9 @@ async function buildFeedbackTraceBundleFromRow(
         files.push(...adapter.files);
         rawAdapterTrace = adapter.raw;
         normalizedAdapterTrace = adapter.normalized;
-      } else if (run.adapterType === "opencode_local") {
+      } else if (run.adapterType === "opencode_local" || run.adapterType === "opencode_9router") {
         const adapter = await buildOpenCodeTraceFiles({
+          adapterType: run.adapterType,
           sessionId: run.sessionIdAfter ?? run.sessionIdBefore,
           stdoutText,
           state,

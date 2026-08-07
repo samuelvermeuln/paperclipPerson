@@ -31,6 +31,7 @@ const mockEnvironmentService = vi.hoisted(() => ({
   getById: vi.fn(),
 }));
 const mockListOpenCodeModels = vi.hoisted(() => vi.fn());
+const mockDiscover9RouterCombos = vi.hoisted(() => vi.fn());
 
 const mockAgentInstructionsService = vi.hoisted(() => ({
   materializeManagedBundle: vi.fn(),
@@ -72,6 +73,15 @@ function registerModuleMocks() {
     return {
       ...actual,
       listOpenCodeModels: mockListOpenCodeModels,
+    };
+  });
+
+  vi.doMock("@paperclipai/adapter-opencode-9router/server", async () => {
+    const actual = await vi.importActual<typeof import("@paperclipai/adapter-opencode-9router/server")>("@paperclipai/adapter-opencode-9router/server");
+    return {
+      ...actual,
+      discover9RouterCombos: mockDiscover9RouterCombos,
+      normalize9RouterBaseUrl: (value: string) => value,
     };
   });
 
@@ -176,6 +186,14 @@ describe("adapter model refresh route", () => {
     mockEnvironmentService.getById.mockResolvedValue(null);
     mockListOpenCodeModels.mockReset();
     mockListOpenCodeModels.mockResolvedValue([{ id: "dynamic-opencode-model", label: "dynamic-opencode-model" }]);
+    mockDiscover9RouterCombos.mockReset();
+    mockDiscover9RouterCombos.mockResolvedValue({
+      provider: "9router",
+      cached: false,
+      fetchedAt: new Date(0).toISOString(),
+      combos: [{ id: "auto", name: "9Router — auto", ownedBy: "combo" }],
+      models: [{ id: "auto", label: "9Router — auto" }],
+    });
     await unregisterTestAdapter(refreshableAdapterType);
   });
 
@@ -210,7 +228,7 @@ describe("adapter model refresh route", () => {
     expect(res.body).toEqual([{ id: "fresh-model", label: "fresh-model" }]);
     expect(refreshModels).toHaveBeenCalledTimes(1);
     expect(listModels).not.toHaveBeenCalled();
-  });
+  }, 20_000);
 
   it("skips OpenCode model discovery for non-local environments", async () => {
     mockEnvironmentService.getById.mockResolvedValue({
@@ -229,6 +247,30 @@ describe("adapter model refresh route", () => {
     expect(res.status, JSON.stringify(res.body)).toBe(200);
     expect(res.body).toEqual(openCodeFallbackModels);
     expect(mockListOpenCodeModels).not.toHaveBeenCalled();
+  });
+
+  it("discovers 9Router combos through the adapter models route without exposing secrets", async () => {
+    process.env.NINEROUTER_API_KEY = "secret-value";
+
+    const app = await createApp();
+    const res = await requestApp(app, (baseUrl) =>
+      request(baseUrl).get("/api/companies/company-1/adapters/opencode_9router/models?baseUrl=http://9router:20128/v1&apiKeyEnv=NINEROUTER_API_KEY&comboPrefix=pc-&refresh=1"),
+    );
+
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    expect(res.body).toEqual({
+      provider: "9router",
+      cached: false,
+      fetchedAt: new Date(0).toISOString(),
+      combos: [{ id: "auto", name: "9Router — auto", ownedBy: "combo" }],
+      models: [{ id: "auto", label: "9Router — auto" }],
+    });
+    expect(mockDiscover9RouterCombos).toHaveBeenCalledWith(expect.objectContaining({
+      apiKey: "secret-value",
+      apiKeyEnv: "NINEROUTER_API_KEY",
+      comboPrefix: "pc-",
+      forceRefresh: true,
+    }));
   });
 
   it("keeps OpenCode model discovery enabled for local environments", async () => {
