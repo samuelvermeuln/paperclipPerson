@@ -137,6 +137,7 @@ jobs:
           echo "last=${last}" >> "$GITHUB_OUTPUT"
           echo "count=${count}" >> "$GITHUB_OUTPUT"
 
+          
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v6
