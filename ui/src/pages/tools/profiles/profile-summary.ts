@@ -1,4 +1,5 @@
 import type { ToolProfileStatus, ToolProfileSummary, ToolProfileWithDetails } from "@paperclipai/shared";
+import { t } from "@/i18n";
 
 /**
  * Prosumer copy for the access-profile index (PAP-10997, AP1). Reads the
@@ -11,16 +12,35 @@ function plural(n: number, one: string, many = `${one}s`): string {
   return `${n} ${n === 1 ? one : many}`;
 }
 
+function toolCountLabel(count: number) {
+  return t("profiles.summary.toolCount", { defaultValue: plural(count, "tool"), count });
+}
+
+function appCountLabel(count: number) {
+  return t("profiles.summary.appCount", { defaultValue: plural(count, "app"), count });
+}
+
+function agentCountLabel(count: number) {
+  return t("profiles.summary.agentCount", { defaultValue: plural(count, "agent"), count });
+}
+
+function assignmentCountLabel(count: number) {
+  return t("profiles.summary.assignmentCount", { defaultValue: plural(count, "assignment"), count });
+}
+
 /** "9 tools · 3 apps" / "All tools" / "All except 2 tools". */
 export function allowsLabel(summary: ToolProfileSummary): string {
   if (summary.accessMode === "all_except") {
     return summary.excludedToolCount === 0
-      ? "All tools"
-      : `All except ${plural(summary.excludedToolCount, "tool")}`;
+      ? t("profiles.summary.allTools", { defaultValue: "All tools" })
+      : t("profiles.summary.allExceptTools", {
+        defaultValue: `All except ${plural(summary.excludedToolCount, "tool")}`,
+        count: summary.excludedToolCount,
+      });
   }
-  const parts = [plural(summary.allowedToolCount, "tool")];
+  const parts = [toolCountLabel(summary.allowedToolCount)];
   if (summary.allowedApplicationCount > 0) {
-    parts.push(plural(summary.allowedApplicationCount, "app"));
+    parts.push(appCountLabel(summary.allowedApplicationCount));
   }
   return parts.join(" · ");
 }
@@ -33,21 +53,21 @@ export interface AssignedLabel {
 
 /** "Company default" / "2 agents" / "Not assigned yet". */
 export function assignedLabel(summary: ToolProfileSummary): AssignedLabel {
-  if (summary.isCompanyDefault) return { text: "Company default", unassigned: false };
+  if (summary.isCompanyDefault) return { text: t("profiles.summary.companyDefault", { defaultValue: "Company default" }), unassigned: false };
   if (summary.appliesToAgentCount > 0) {
-    return { text: plural(summary.appliesToAgentCount, "agent"), unassigned: false };
+    return { text: agentCountLabel(summary.appliesToAgentCount), unassigned: false };
   }
   if (summary.assignmentCount > 0) {
-    return { text: plural(summary.assignmentCount, "assignment"), unassigned: false };
+    return { text: assignmentCountLabel(summary.assignmentCount), unassigned: false };
   }
-  return { text: "Not assigned yet", unassigned: true };
+  return { text: t("profiles.summary.notAssignedYet", { defaultValue: "Not assigned yet" }), unassigned: true };
 }
 
 export const STATUS_LABEL: Record<ToolProfileStatus, string> = {
-  draft: "Draft",
-  active: "Active",
-  disabled: "Off",
-  archived: "Archived",
+  draft: t("profiles.status.draft", { defaultValue: "Draft" }),
+  active: t("profiles.status.active", { defaultValue: "Active" }),
+  disabled: t("profiles.status.disabled", { defaultValue: "Off" }),
+  archived: t("profiles.status.archived", { defaultValue: "Archived" }),
 };
 
 export function isDraft(profile: Pick<ToolProfileWithDetails, "status">): boolean {

@@ -1,9 +1,192 @@
 {
   "app": {
     "noCompanies": {
-      "title": "İlk şirketinizi oluşturun",
-      "description": "Bir şirket oluşturarak başlayın.",
-      "newCompany": "Yeni Şirket"
+      "title": "Create your first company",
+      "description": "Get started by creating a company.",
+      "newCompany": "New Company"
+    }
+  },
+  "common": {
+    "company": "Company",
+    "actions": {
+      "archive": "Archive",
+      "cancel": "Cancel",
+      "delete": "Delete",
+      "done": "Done",
+      "duplicate": "Duplicate",
+      "edit": "Edit",
+      "restore": "Restore",
+      "resume": "Resume"
+    },
+    "filters": {
+      "active": "Active",
+      "archived": "Archived"
+    }
+  },
+  "sidebar": {
+    "activity": "Activity",
+    "apps": "Apps",
+    "artifacts": "Artifacts",
+    "attentionNeeded": "attention needed",
+    "audit": "Audit",
+    "cases": "Cases",
+    "collapse": "Collapse sidebar",
+    "company": "Company",
+    "conferenceRoom": "Conference Room",
+    "costs": "Costs",
+    "dashboard": "Dashboard",
+    "decisions": "Decisions",
+    "expand": "Expand sidebar",
+    "goals": "Goals",
+    "inbox": "Inbox",
+    "keepExpanded": "Keep sidebar expanded",
+    "liveCount": "{{count}} live",
+    "newTask": "New Task",
+    "openSearch": "Open search",
+    "org": "Org",
+    "pipelines": "Pipelines",
+    "projects": "Projects",
+    "routines": "Routines",
+    "settings": "Settings",
+    "skills": "Skills",
+    "status": "Status",
+    "tasks": "Tasks",
+    "timeline": "Timeline",
+    "unread": "unread",
+    "work": "Work",
+    "workspaces": "Workspaces"
+  },
+  "companyMenu": {
+    "companySettings": "Company settings",
+    "createNewCompany": "Create new company...",
+    "english": "English",
+    "invitePeople": "Invite people",
+    "invitePeopleNamed": "Invite people to {{name}}",
+    "language": "Language",
+    "noCompanies": "No companies",
+    "openSwitcher": "Open company switcher",
+    "openSwitcherNamed": "Open {{name}} company switcher",
+    "portugueseBrazil": "Português (Brasil)",
+    "selectCompany": "Select company",
+    "signOut": "Sign out",
+    "signingOut": "Signing out...",
+    "switchCompany": "Switch company"
+  },
+  "tools": {
+    "selectCompany": "Select a company to open advanced setup.",
+    "advancedSetup": {
+      "title": "Advanced setup",
+      "badge": "Advanced",
+      "description": {
+        "beforeLink": "For tools that aren't in the gallery. You'll need details from the tool's documentation. Most people never need this — if the app you want is in the gallery,",
+        "link": "connect it there instead"
+      },
+      "footer": {
+        "beforeLink": "Looking for the developer surface?",
+        "link": "Open developer tools"
+      }
+    },
+    "developerTools": {
+      "title": "Developer tools",
+      "description": "Apps is the simple way to connect tools. This Developer area is for wiring your own servers, tokens, and rules by hand — most teams never need it."
+    },
+    "tabs": {
+      "activity": "Activity",
+      "gateways": "Gateways",
+      "health": "Health",
+      "pasteConfig": "Paste a config",
+      "profiles": "Profiles",
+      "rules": "Rules",
+      "runYourOwn": "Run your own",
+      "smokeLab": "Smoke Lab"
+    }
+  },
+  "profiles": {
+    "actions": "Profile actions",
+    "checkAgentAccess": "Check an agent's access",
+    "checkAgentAccessDescription": "See exactly which tools an agent can use right now, and which profile allows each one.",
+    "description": "Decide which tools your agents can use. Build a profile once, then assign it to the agents that need it.",
+    "doesNotChangeAccess": "does not change access",
+    "loading": "Loading profiles…",
+    "newProfile": "New profile",
+    "newToolsCount": "{{count}} new",
+    "noArchived": "No archived profiles.",
+    "title": "Access profiles",
+    "table": {
+      "allows": "Allows",
+      "assignedTo": "Assigned to",
+      "profile": "Profile",
+      "status": "Status",
+      "updated": "Updated"
+    },
+    "empty": {
+      "title": "Create your first access profile",
+      "description": "Pick a starting point. You can fine-tune exactly which tools it allows in the next step."
+    },
+    "templates": {
+      "read_only": {
+        "title": "Read-only",
+        "description": "See and fetch, but never change anything."
+      },
+      "everyday": {
+        "title": "Everyday work",
+        "description": "Read and make routine changes — no destructive tools."
+      },
+      "full_access": {
+        "title": "Full access",
+        "description": "Everything every connected app offers."
+      },
+      "scratch": {
+        "title": "Start from scratch",
+        "description": "An empty profile you build up tool by tool."
+      },
+      "copy": {
+        "title": "Copy an existing profile",
+        "description": "Start from a profile you already have."
+      }
+    },
+    "summary": {
+      "allExceptTools": "All except {{count}} tools",
+      "allTools": "All tools",
+      "appCount": "{{count}} apps",
+      "agentCount": "{{count}} agents",
+      "assignmentCount": "{{count}} assignments",
+      "companyDefault": "Company default",
+      "notAssignedYet": "Not assigned yet",
+      "toolCount": "{{count}} tools"
+    },
+    "status": {
+      "active": "Active",
+      "archived": "Archived",
+      "disabled": "Off",
+      "draft": "Draft"
+    },
+    "dialog": {
+      "archive": {
+        "title": "Archive profile",
+        "body": "This profile stops applying to {{count}} agents. You can restore it later."
+      },
+      "restore": {
+        "title": "Restore profile",
+        "body": "This profile will be active again and can be assigned to agents."
+      },
+      "delete": {
+        "title": "Delete profile",
+        "body": "This permanently deletes the profile and removes {{count}} assignments.",
+        "defaultBlocked": "This profile is the company default. Reassign the company default to another profile before deleting it.",
+        "blockedHint": "Choose another access profile and make it the company default first."
+      }
+    },
+    "toasts": {
+      "archived": "Profile archived",
+      "archiveFailed": "Could not archive",
+      "copyUnassigned": "The copy is not assigned to anyone yet.",
+      "deleteFailed": "Could not delete",
+      "deleted": "Profile deleted",
+      "duplicateFailed": "Could not duplicate",
+      "duplicated": "Profile duplicated",
+      "restoreFailed": "Could not restore",
+      "restored": "Profile restored"
     }
   }
 }

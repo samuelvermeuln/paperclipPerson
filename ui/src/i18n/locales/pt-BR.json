@@ -5,5 +5,188 @@
       "description": "Comece criando uma empresa.",
       "newCompany": "Nova empresa"
     }
+  },
+  "common": {
+    "company": "Empresa",
+    "actions": {
+      "archive": "Arquivar",
+      "cancel": "Cancelar",
+      "delete": "Excluir",
+      "done": "Concluir",
+      "duplicate": "Duplicar",
+      "edit": "Editar",
+      "restore": "Restaurar",
+      "resume": "Retomar"
+    },
+    "filters": {
+      "active": "Ativos",
+      "archived": "Arquivados"
+    }
+  },
+  "sidebar": {
+    "activity": "Atividade",
+    "apps": "Apps",
+    "artifacts": "Artefatos",
+    "attentionNeeded": "atenção necessária",
+    "audit": "Auditoria",
+    "cases": "Casos",
+    "collapse": "Recolher barra lateral",
+    "company": "Empresa",
+    "conferenceRoom": "Sala de conferência",
+    "costs": "Custos",
+    "dashboard": "Painel",
+    "decisions": "Decisões",
+    "expand": "Expandir barra lateral",
+    "goals": "Metas",
+    "inbox": "Caixa de entrada",
+    "keepExpanded": "Manter barra lateral expandida",
+    "liveCount": "{{count}} em execução",
+    "newTask": "Nova tarefa",
+    "openSearch": "Abrir busca",
+    "org": "Organização",
+    "pipelines": "Pipelines",
+    "projects": "Projetos",
+    "routines": "Rotinas",
+    "settings": "Configurações",
+    "skills": "Skills",
+    "status": "Status",
+    "tasks": "Tarefas",
+    "timeline": "Linha do tempo",
+    "unread": "não lidas",
+    "work": "Trabalho",
+    "workspaces": "Workspaces"
+  },
+  "companyMenu": {
+    "companySettings": "Configurações da empresa",
+    "createNewCompany": "Criar nova empresa...",
+    "english": "English",
+    "invitePeople": "Convidar pessoas",
+    "invitePeopleNamed": "Convidar pessoas para {{name}}",
+    "language": "Idioma",
+    "noCompanies": "Nenhuma empresa",
+    "openSwitcher": "Abrir seletor de empresa",
+    "openSwitcherNamed": "Abrir seletor da empresa {{name}}",
+    "portugueseBrazil": "Português (Brasil)",
+    "selectCompany": "Selecionar empresa",
+    "signOut": "Sair",
+    "signingOut": "Saindo...",
+    "switchCompany": "Trocar empresa"
+  },
+  "tools": {
+    "selectCompany": "Selecione uma empresa para abrir a configuração avançada.",
+    "advancedSetup": {
+      "title": "Configuração avançada",
+      "badge": "Avançado",
+      "description": {
+        "beforeLink": "Para ferramentas que não estão na galeria. Você vai precisar dos detalhes da documentação da ferramenta. A maioria das pessoas nunca precisa disso — se o app que você quer estiver na galeria,",
+        "link": "conecte por lá"
+      },
+      "footer": {
+        "beforeLink": "Procurando a área para desenvolvedores?",
+        "link": "Abrir ferramentas de desenvolvedor"
+      }
+    },
+    "developerTools": {
+      "title": "Ferramentas de desenvolvedor",
+      "description": "Apps é a forma simples de conectar ferramentas. Esta área de desenvolvedor é para configurar manualmente seus próprios servidores, tokens e regras — a maioria das equipes nunca precisa disso."
+    },
+    "tabs": {
+      "activity": "Atividade",
+      "gateways": "Gateways",
+      "health": "Saúde",
+      "pasteConfig": "Colar configuração",
+      "profiles": "Perfis",
+      "rules": "Regras",
+      "runYourOwn": "Use o seu próprio",
+      "smokeLab": "Smoke Lab"
+    }
+  },
+  "profiles": {
+    "actions": "Ações do perfil",
+    "checkAgentAccess": "Verificar acesso de um agente",
+    "checkAgentAccessDescription": "Veja exatamente quais ferramentas um agente pode usar agora e qual perfil libera cada uma delas.",
+    "description": "Decida quais ferramentas seus agentes podem usar. Monte um perfil uma vez e depois atribua aos agentes que precisarem dele.",
+    "doesNotChangeAccess": "não altera o acesso",
+    "loading": "Carregando perfis…",
+    "newProfile": "Novo perfil",
+    "newToolsCount": "{{count}} novos",
+    "noArchived": "Nenhum perfil arquivado.",
+    "title": "Perfis de acesso",
+    "table": {
+      "allows": "Permite",
+      "assignedTo": "Atribuído a",
+      "profile": "Perfil",
+      "status": "Status",
+      "updated": "Atualizado"
+    },
+    "empty": {
+      "title": "Crie seu primeiro perfil de acesso",
+      "description": "Escolha um ponto de partida. Você poderá ajustar exatamente quais ferramentas ele permite na próxima etapa."
+    },
+    "templates": {
+      "read_only": {
+        "title": "Somente leitura",
+        "description": "Ver e consultar, mas nunca alterar nada."
+      },
+      "everyday": {
+        "title": "Trabalho do dia a dia",
+        "description": "Ler e fazer mudanças rotineiras — sem ferramentas destrutivas."
+      },
+      "full_access": {
+        "title": "Acesso total",
+        "description": "Tudo o que cada app conectado oferece."
+      },
+      "scratch": {
+        "title": "Começar do zero",
+        "description": "Um perfil vazio para você montar ferramenta por ferramenta."
+      },
+      "copy": {
+        "title": "Copiar um perfil existente",
+        "description": "Comece a partir de um perfil que você já tem."
+      }
+    },
+    "summary": {
+      "allExceptTools": "Todas, exceto {{count}} ferramentas",
+      "allTools": "Todas as ferramentas",
+      "appCount": "{{count}} apps",
+      "agentCount": "{{count}} agentes",
+      "assignmentCount": "{{count}} atribuições",
+      "companyDefault": "Padrão da empresa",
+      "notAssignedYet": "Ainda não atribuído",
+      "toolCount": "{{count}} ferramentas"
+    },
+    "status": {
+      "active": "Ativo",
+      "archived": "Arquivado",
+      "disabled": "Desligado",
+      "draft": "Rascunho"
+    },
+    "dialog": {
+      "archive": {
+        "title": "Arquivar perfil",
+        "body": "Este perfil deixará de se aplicar a {{count}} agentes. Você pode restaurá-lo depois."
+      },
+      "restore": {
+        "title": "Restaurar perfil",
+        "body": "Este perfil ficará ativo novamente e poderá ser atribuído a agentes."
+      },
+      "delete": {
+        "title": "Excluir perfil",
+        "body": "Isso exclui permanentemente o perfil e remove {{count}} atribuições.",
+        "defaultBlocked": "Este perfil é o padrão da empresa. Reatribua o perfil padrão para outro perfil antes de excluí-lo.",
+        "blockedHint": "Escolha outro perfil de acesso e torne-o o padrão da empresa primeiro."
+      }
+    },
+    "toasts": {
+      "archived": "Perfil arquivado",
+      "archiveFailed": "Não foi possível arquivar",
+      "copyUnassigned": "A cópia ainda não está atribuída a ninguém.",
+      "deleteFailed": "Não foi possível excluir",
+      "deleted": "Perfil excluído",
+      "duplicateFailed": "Não foi possível duplicar",
+      "duplicated": "Perfil duplicado",
+      "restoreFailed": "Não foi possível restaurar",
+      "restored": "Perfil restaurado"
+    }
   }
 }
