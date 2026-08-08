@@ -206,6 +206,63 @@
       "restored": "Perfil restaurado"
     }
   },
+  "agentDetail": {
+    "fallbackAgent": "Agente",
+    "tabs": {
+      "dashboard": "Painel",
+      "instructions": "Instruções",
+      "skills": "Habilidades",
+      "configuration": "Configuração",
+      "tools": "Ferramentas",
+      "runs": "Execuções",
+      "audit": "Auditoria",
+      "budget": "Orçamento"
+    },
+    "breadcrumbs": {
+      "run": "Execução {{id}}"
+    },
+    "actions": {
+      "approveAgent": "Aprovar agente",
+      "save": "Salvar",
+      "saving": "Salvando…",
+      "viewDetails": "Ver detalhes",
+      "seeAll": "Ver tudo",
+      "backToRuns": "Voltar para execuções"
+    },
+    "messages": {
+      "pendingApproval": "Este agente está aguardando aprovação do board e ainda não pode ser executado.",
+      "failedToUpdatePermissions": "Não foi possível atualizar as permissões"
+    },
+    "latestRun": {
+      "liveRun": "Execução ao vivo",
+      "latestRun": "Última execução"
+    },
+    "overview": {
+      "runActivity": "Atividade de execuções",
+      "tasksByPriority": "Tarefas por prioridade",
+      "tasksByStatus": "Tarefas por status",
+      "successRate": "Taxa de sucesso",
+      "last14Days": "Últimos 14 dias",
+      "recentTasks": "Tarefas recentes",
+      "noRecentTasks": "Nenhuma tarefa recente.",
+      "moreTasks": "+{{count}} tarefas a mais",
+      "costs": "Custos"
+    },
+    "costs": {
+      "inputTokens": "Tokens de entrada",
+      "outputTokens": "Tokens de saída",
+      "cachedTokens": "Tokens em cache",
+      "totalCost": "Custo total",
+      "date": "Data",
+      "run": "Execução",
+      "input": "Entrada",
+      "output": "Saída",
+      "cost": "Custo"
+    },
+    "runs": {
+      "noRunsYet": "Ainda não há execuções."
+    }
+  },
   "agentConfigForm": {
     "unsavedChanges": "Alterações não salvas",
     "actions": {

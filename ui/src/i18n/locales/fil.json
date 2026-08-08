@@ -206,6 +206,63 @@
       "restored": "Profile restored"
     }
   },
+  "agentDetail": {
+    "fallbackAgent": "Agent",
+    "tabs": {
+      "dashboard": "Dashboard",
+      "instructions": "Instructions",
+      "skills": "Skills",
+      "configuration": "Configuration",
+      "tools": "Tools",
+      "runs": "Runs",
+      "audit": "Audit",
+      "budget": "Budget"
+    },
+    "breadcrumbs": {
+      "run": "Run {{id}}"
+    },
+    "actions": {
+      "approveAgent": "Approve agent",
+      "save": "Save",
+      "saving": "Saving…",
+      "viewDetails": "View details",
+      "seeAll": "See all",
+      "backToRuns": "Back to runs"
+    },
+    "messages": {
+      "pendingApproval": "This agent is pending board approval and cannot be invoked yet.",
+      "failedToUpdatePermissions": "Failed to update permissions"
+    },
+    "latestRun": {
+      "liveRun": "Live Run",
+      "latestRun": "Latest Run"
+    },
+    "overview": {
+      "runActivity": "Run Activity",
+      "tasksByPriority": "Tasks by Priority",
+      "tasksByStatus": "Tasks by Status",
+      "successRate": "Success Rate",
+      "last14Days": "Last 14 days",
+      "recentTasks": "Recent Tasks",
+      "noRecentTasks": "No recent tasks.",
+      "moreTasks": "+{{count}} more tasks",
+      "costs": "Costs"
+    },
+    "costs": {
+      "inputTokens": "Input tokens",
+      "outputTokens": "Output tokens",
+      "cachedTokens": "Cached tokens",
+      "totalCost": "Total cost",
+      "date": "Date",
+      "run": "Run",
+      "input": "Input",
+      "output": "Output",
+      "cost": "Cost"
+    },
+    "runs": {
+      "noRunsYet": "No runs yet."
+    }
+  },
   "agentConfigForm": {
     "unsavedChanges": "Unsaved changes",
     "actions": {
