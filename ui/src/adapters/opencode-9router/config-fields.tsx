@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "@/i18n";
 import type { AdapterConfigFieldsProps } from "../types";
 import {
   DraftInput,
@@ -34,16 +35,17 @@ function ComboSelectField({
   onChange: (value: string) => void;
   placeholder: string;
 }) {
+  const { t } = useTranslation();
   const groups = useMemo<SearchableSelectGroup<string, ComboOption>[]>(() => [{
     id: "combos",
-    label: "Combos",
+    label: t("agents.new.opencode9Router.combos", { defaultValue: "Combos" }),
     options: models.map((model) => ({
       key: model.id,
       value: model.id,
       label: model.label,
       searchText: model.id,
     })),
-  }], [models]);
+  }], [models, t]);
 
   return (
     <SearchableSelect
@@ -51,8 +53,10 @@ function ComboSelectField({
       groups={groups}
       onValueChange={(next) => onChange(next)}
       placeholder={placeholder}
-      searchPlaceholder="Search combos..."
-      emptyMessage="No combos found. Refresh discovery or adjust the 9Router settings."
+      searchPlaceholder={t("agents.new.opencode9Router.searchCombos", { defaultValue: "Search combos..." })}
+      emptyMessage={t("agents.new.opencode9Router.noCombos", {
+        defaultValue: "No combos found. Refresh discovery or adjust the 9Router settings.",
+      })}
       renderValue={(option) => option?.label ?? (value || placeholder)}
       createItem={{
         render: (query) => `Use \"${query}\"`,
@@ -72,6 +76,7 @@ export function OpenCode9RouterConfigFields({
   models,
   hideInstructionsFile,
 }: AdapterConfigFieldsProps) {
+  const { t } = useTranslation();
   const initialSmallComboOverrideIsPrimary = Object.prototype.hasOwnProperty.call(config, "smallCombo")
     && String(config.smallCombo ?? "") === "";
   const initialIgnoreGlobalComboPrefix = Object.prototype.hasOwnProperty.call(config, "comboPrefix")
@@ -104,7 +109,10 @@ export function OpenCode9RouterConfigFields({
   return (
     <>
       {!hideInstructionsFile && (
-        <Field label="Agent instructions file" hint={instructionsFileHint}>
+        <Field
+          label={t("agents.new.opencode9Router.instructionsFile", { defaultValue: "Agent instructions file" })}
+          hint={t("agents.new.opencode9Router.instructionsFileHint", { defaultValue: instructionsFileHint })}
+        >
           <div className="flex items-center gap-2">
             <DraftInput
               value={
@@ -131,8 +139,10 @@ export function OpenCode9RouterConfigFields({
       )}
 
       <Field
-        label="9Router base URL"
-        hint="Defaults to NINEROUTER_BASE_URL. Paperclip normalizes values like host/, host/v1, and host/v1/."
+        label={t("agents.new.opencode9Router.baseUrl", { defaultValue: "9Router base URL" })}
+        hint={t("agents.new.opencode9Router.baseUrlHint", {
+          defaultValue: "Defaults to NINEROUTER_BASE_URL. Paperclip normalizes values like host/, host/v1, and host/v1/.",
+        })}
       >
         <DraftInput
           value={
@@ -152,8 +162,10 @@ export function OpenCode9RouterConfigFields({
       </Field>
 
       <Field
-        label="API key environment variable"
-        hint="Stores only the variable name in the agent config. Paperclip reads the real value from its own environment at runtime."
+        label={t("agents.new.opencode9Router.apiKeyEnv", { defaultValue: "API key environment variable" })}
+        hint={t("agents.new.opencode9Router.apiKeyEnvHint", {
+          defaultValue: "Stores only the variable name in the agent config. Paperclip reads the real value from its own environment at runtime.",
+        })}
       >
         <DraftInput
           value={
@@ -173,8 +185,10 @@ export function OpenCode9RouterConfigFields({
       </Field>
 
       <Field
-        label="Auxiliary combo"
-        hint="Optional OpenCode small_model combo. Leave blank to inherit the global default, or force reuse of the primary combo below."
+        label={t("agents.new.opencode9Router.auxiliaryCombo", { defaultValue: "Auxiliary combo" })}
+        hint={t("agents.new.opencode9Router.auxiliaryComboHint", {
+          defaultValue: "Optional OpenCode small_model combo. Leave blank to inherit the global default, or force reuse of the primary combo below.",
+        })}
       >
         <div className="space-y-2">
           <ComboSelectField
@@ -191,11 +205,13 @@ export function OpenCode9RouterConfigFields({
                     mark("adapterConfig", "smallCombo", next || undefined);
                   })()
             }
-            placeholder="Inherit global small combo"
+            placeholder={t("agents.new.opencode9Router.inheritGlobalSmallCombo", { defaultValue: "Inherit global small combo" })}
           />
           <ToggleField
-            label="Always reuse primary combo"
-            hint="Persists an explicit per-agent override so this agent ignores NINEROUTER_SMALL_COMBO and uses the primary combo for small_model."
+            label={t("agents.new.opencode9Router.alwaysReusePrimaryCombo", { defaultValue: "Always reuse primary combo" })}
+            hint={t("agents.new.opencode9Router.alwaysReusePrimaryComboHint", {
+              defaultValue: "Persists an explicit per-agent override so this agent ignores NINEROUTER_SMALL_COMBO and uses the primary combo for small_model.",
+            })}
             checked={smallComboOverrideIsPrimary}
             onChange={(checked) => {
               if (isCreate) {
@@ -213,8 +229,10 @@ export function OpenCode9RouterConfigFields({
       </Field>
 
       <Field
-        label="Optional combo prefix"
-        hint="When set, only discovered combos starting with this prefix are shown."
+        label={t("agents.new.opencode9Router.optionalComboPrefix", { defaultValue: "Optional combo prefix" })}
+        hint={t("agents.new.opencode9Router.optionalComboPrefixHint", {
+          defaultValue: "When set, only discovered combos starting with this prefix are shown.",
+        })}
       >
         <div className="space-y-2">
           <DraftInput
@@ -241,8 +259,10 @@ export function OpenCode9RouterConfigFields({
             placeholder="pc-"
           />
           <ToggleField
-            label="Show all combos"
-            hint="Persists an explicit per-agent override so this agent ignores NINEROUTER_COMBO_PREFIX and discovers every combo returned by 9Router."
+            label={t("agents.new.opencode9Router.showAllCombos", { defaultValue: "Show all combos" })}
+            hint={t("agents.new.opencode9Router.showAllCombosHint", {
+              defaultValue: "Persists an explicit per-agent override so this agent ignores NINEROUTER_COMBO_PREFIX and discovers every combo returned by 9Router.",
+            })}
             checked={ignoreGlobalComboPrefix}
             onChange={(checked) => {
               if (isCreate) {
@@ -260,8 +280,10 @@ export function OpenCode9RouterConfigFields({
       </Field>
 
       <Field
-        label="Combo cache TTL (seconds)"
-        hint="Discovery cache key includes base URL, API key variable name, and prefix. Use Refresh combos to bypass cache manually."
+        label={t("agents.new.opencode9Router.comboCacheTtl", { defaultValue: "Combo cache TTL (seconds)" })}
+        hint={t("agents.new.opencode9Router.comboCacheTtlHint", {
+          defaultValue: "Discovery cache key includes base URL, API key variable name, and prefix. Use Refresh combos to bypass cache manually.",
+        })}
       >
         <DraftNumberInput
           value={
@@ -281,7 +303,7 @@ export function OpenCode9RouterConfigFields({
       </Field>
 
       <ToggleField
-        label="Skip permissions"
+        label={t("agents.new.opencode9Router.skipPermissions", { defaultValue: "Skip permissions" })}
         hint={help.dangerouslySkipPermissions}
         checked={
           isCreate

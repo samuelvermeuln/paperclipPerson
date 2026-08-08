@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   Agent,
@@ -205,6 +206,7 @@ function clampDelayMsFromSeconds(value: number) {
 /* ---- Form ---- */
 
 export function AgentConfigForm(props: AgentConfigFormProps) {
+  const { t } = useTranslation();
   const { mode, adapterModels: externalModels } = props;
   const isCreate = mode === "create";
   const cards = props.sectionLayout === "cards";
@@ -764,7 +766,9 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
         agentDefaultEnvironmentId: rawCurrentDefaultEnvironmentId || null,
         instanceDefaultEnvironmentId: settings?.defaultEnvironmentId ?? null,
       });
-      const primaryModelLabel = adapterType === "opencode_9router" ? "Primary combo" : "Primary model";
+      const primaryModelLabel = adapterType === "opencode_9router"
+        ? t("agentConfigForm.test.primaryCombo")
+        : t("agentConfigForm.test.primaryModel");
       const testResults: Array<{ label: string; model: string | null; result: AdapterEnvironmentTestResult }> = [
         {
           label: primaryModelLabel,
@@ -780,10 +784,10 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
 
       if (cheapTestCase) {
         testResults.push({
-          label: "Cheap model",
+          label: t("agentConfigForm.test.cheapModel"),
           model: cheapTestCase.model,
           result: await runEnvironmentTestCase(
-            "Cheap model",
+            t("agentConfigForm.test.cheapModel"),
             cheapTestCase.model,
             cheapTestCase.adapterConfig,
             environmentId,
@@ -798,12 +802,12 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
   });
   const [testActionPending, setTestActionPending] = useState(false);
   const [testActionError, setTestActionError] = useState<string | null>(null);
-  const testActionLabel = "Test";
+  const testActionLabel = t("agentConfigForm.actions.test");
   const isSavePending = !isCreate && Boolean(props.isSaving);
   const testEnvironmentDisabled = testActionPending || isSavePending || !selectedCompanyId;
   const runEnvironmentTest = useCallback(async () => {
     if (!selectedCompanyId) {
-      throw new Error("Select a company to test adapter environment");
+      throw new Error(t("agentConfigForm.messages.selectCompanyToTest"));
     }
     setTestActionPending(true);
     setTestActionError(null);
@@ -811,7 +815,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
     try {
       return await testEnvironment.mutateAsync();
     } catch (error) {
-      setTestActionError(error instanceof Error ? error.message : "Environment test failed");
+      setTestActionError(error instanceof Error ? error.message : t("agentConfigForm.messages.environmentTestFailed"));
       throw error;
     } finally {
       setTestActionPending(false);
@@ -905,7 +909,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
       });
       queryClient.setQueryData(modelQueryKey, refreshed);
     } catch (error) {
-      setRefreshModelsError(error instanceof Error ? error.message : "Failed to refresh adapter models.");
+      setRefreshModelsError(error instanceof Error ? error.message : t("agentConfigForm.messages.failedToRefreshAdapterModels"));
     } finally {
       setRefreshingModels(false);
     }
@@ -919,7 +923,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
         : adapterType === "opencode_local"
           ? "variant"
           : "effort";
-  const thinkingEffortOptions =
+  const baseThinkingEffortOptions =
     adapterType === "codex_local"
       ? codexThinkingEffortOptions
       : adapterType === "cursor"
@@ -927,6 +931,33 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
         : adapterType === "opencode_local"
           ? openCodeThinkingEffortOptions
           : claudeThinkingEffortOptions;
+  const thinkingEffortOptions = useMemo(
+    () =>
+      baseThinkingEffortOptions.map((option) => ({
+        ...option,
+        label:
+          option.id === ""
+            ? t("agentConfigForm.options.auto")
+            : option.id === "minimal"
+              ? t("agentConfigForm.options.minimal")
+              : option.id === "low"
+                ? t("agentConfigForm.options.low")
+                : option.id === "medium"
+                  ? t("agentConfigForm.options.medium")
+                  : option.id === "high"
+                    ? t("agentConfigForm.options.high")
+                    : option.id === "xhigh"
+                      ? t("agentConfigForm.options.xhigh")
+                      : option.id === "max"
+                        ? t("agentConfigForm.options.max")
+                        : option.id === "plan"
+                          ? t("agentConfigForm.options.plan")
+                          : option.id === "ask"
+                            ? t("agentConfigForm.options.ask")
+                            : option.label,
+      })),
+    [baseThinkingEffortOptions, t],
+  );
   const currentThinkingEffort = isCreate
     ? val!.thinkingEffort
     : adapterType === "codex_local"
@@ -1057,13 +1088,13 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
       {isDirty && !props.hideInlineSave && (
         <div className="sticky top-0 z-10 flex items-center justify-end px-4 py-2 bg-background/90 backdrop-blur-sm border-b border-primary/20">
           <div className="flex items-center gap-3">
-            <span className="text-xs text-muted-foreground">Unsaved changes</span>
+            <span className="text-xs text-muted-foreground">{t("agentConfigForm.unsavedChanges")}</span>
             <Button
               size="sm"
               onClick={handleSave}
               disabled={!isCreate && props.isSaving}
             >
-              {!isCreate && props.isSaving ? "Saving..." : "Save"}
+              {!isCreate && props.isSaving ? t("agentConfigForm.actions.saving") : t("agentConfigForm.actions.save")}
             </Button>
           </div>
         </div>
@@ -1073,42 +1104,42 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
       {!isCreate && (
         <div className={cn(!cards && "border-b border-border")}>
           {cards
-            ? <h3 className="text-sm font-medium mb-3">Identity</h3>
-            : <div className="px-4 py-2 text-xs font-medium text-muted-foreground">Identity</div>
+            ? <h3 className="text-sm font-medium mb-3">{t("agentConfigForm.sections.identity")}</h3>
+            : <div className="px-4 py-2 text-xs font-medium text-muted-foreground">{t("agentConfigForm.sections.identity")}</div>
           }
           <div className={cn(cards ? "border border-border rounded-lg p-4 space-y-3" : "px-4 pb-3 space-y-3")}>
-            <Field label="Name" hint={help.name}>
+            <Field label={t("agentConfigForm.fields.name")} hint={help.name}>
               <DraftInput
                 value={eff("identity", "name", props.agent.name)}
                 onCommit={(v) => mark("identity", "name", v)}
                 immediate
                 className={inputClass}
-                placeholder="Agent name"
+                placeholder={t("agentConfigForm.placeholders.agentName")}
               />
             </Field>
-            <Field label="Title" hint={help.title}>
+            <Field label={t("agentConfigForm.fields.title")} hint={help.title}>
               <DraftInput
                 value={eff("identity", "title", props.agent.title ?? "")}
                 onCommit={(v) => mark("identity", "title", v || null)}
                 immediate
                 className={inputClass}
-                placeholder="e.g. VP of Engineering"
+                placeholder={t("agentConfigForm.placeholders.titleExample")}
               />
             </Field>
-            <Field label="Reports to" hint={help.reportsTo}>
+            <Field label={t("agentConfigForm.fields.reportsTo")} hint={help.reportsTo}>
               <ReportsToPicker
                 agents={companyAgents}
                 value={eff("identity", "reportsTo", props.agent.reportsTo ?? null)}
                 onChange={(id) => mark("identity", "reportsTo", id)}
                 excludeAgentIds={[props.agent.id]}
-                chooseLabel="Choose manager…"
+                chooseLabel={t("agentConfigForm.fields.chooseManager")}
               />
             </Field>
-            <Field label="Capabilities" hint={help.capabilities}>
+            <Field label={t("agentConfigForm.fields.capabilities")} hint={help.capabilities}>
               <MarkdownEditor
                 value={eff("identity", "capabilities", props.agent.capabilities ?? "") ?? ""}
                 onChange={(v) => mark("identity", "capabilities", v || null)}
-                placeholder="Describe what this agent can do..."
+                placeholder={t("agentConfigForm.placeholders.capabilities")}
                 contentClassName="min-h-(--sz-44px) text-sm font-mono"
                 imageUploadHandler={async (file) => {
                   const asset = await uploadMarkdownImage.mutateAsync({
@@ -1121,7 +1152,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
             </Field>
             {isLocal && !props.hidePromptTemplate && (
               <>
-                <Field label="Prompt Template" hint={help.promptTemplate}>
+                <Field label={t("agentConfigForm.fields.promptTemplate")} hint={help.promptTemplate}>
                   <MarkdownEditor
                     value={eff(
                       "adapterConfig",
@@ -1129,7 +1160,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
                       String(config.promptTemplate ?? ""),
                     )}
                     onChange={(v) => mark("adapterConfig", "promptTemplate", v ?? "")}
-                    placeholder="You are agent {{ agent.name }}. Your role is {{ agent.role }}..."
+                    placeholder={t("agentConfigForm.placeholders.promptTemplate")}
                     contentClassName="min-h-(--sz-88px) text-sm font-mono"
                     imageUploadHandler={async (file) => {
                       const namespace = `agents/${props.agent.id}/prompt-template`;
@@ -1139,7 +1170,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
                   />
                 </Field>
                 <div className="rounded-md border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-900 dark:text-amber-100">
-                  Prompt template is replayed on every heartbeat. Keep it compact and dynamic to avoid recurring token cost and cache churn.
+                  {t("agentConfigForm.messages.promptTemplateNotice")}
                 </div>
               </>
             )}
@@ -1154,23 +1185,21 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
         // Render the environment read-only instead of the selectable picker.
         <div className={cn(!cards && (isCreate ? "border-t border-border" : "border-b border-border"))}>
           {cards
-            ? <h3 className="text-sm font-medium mb-3">Environment</h3>
-            : <div className="px-4 py-2 text-xs font-medium text-muted-foreground">Environment</div>
+            ? <h3 className="text-sm font-medium mb-3">{t("agentConfigForm.sections.environment")}</h3>
+            : <div className="px-4 py-2 text-xs font-medium text-muted-foreground">{t("agentConfigForm.sections.environment")}</div>
           }
           <div className={cn(cards ? "border border-border rounded-lg p-4 space-y-3" : "px-4 pb-3 space-y-3")}>
             <Field
-              label="Default environment"
-              hint="This instance runs all agents in the Kubernetes sandbox. Local execution is disabled."
+              label={t("agentConfigForm.fields.defaultEnvironment")}
+              hint={t("agentConfigForm.messages.kubernetesSandboxOnly")}
             >
               {kubernetesEnvironment ? (
                 <div className={cn(inputClass, "flex items-center text-muted-foreground")}>
-                  {kubernetesEnvironment.name} · Kubernetes sandbox
+                  {kubernetesEnvironment.name} · {t("agentConfigForm.messages.kubernetesSandbox")}
                 </div>
               ) : (
                 <div className="rounded-md border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
-                  This instance requires the Kubernetes sandbox, but no managed Kubernetes
-                  environment is available for this company yet. Configure one before creating
-                  agents; execution will not fall back to local.
+                  {t("agentConfigForm.messages.kubernetesEnvironmentMissing")}
                 </div>
               )}
             </Field>
@@ -1179,11 +1208,11 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
       ) : showEnvironmentOverrideControl ? (
         <div className={cn(!cards && (isCreate ? "border-t border-border" : "border-b border-border"))}>
           {cards
-            ? <h3 className="text-sm font-medium mb-3">Environment</h3>
-            : <div className="px-4 py-2 text-xs font-medium text-muted-foreground">Environment</div>
+            ? <h3 className="text-sm font-medium mb-3">{t("agentConfigForm.sections.environment")}</h3>
+            : <div className="px-4 py-2 text-xs font-medium text-muted-foreground">{t("agentConfigForm.sections.environment")}</div>
           }
           <div className={cn(cards ? "border border-border rounded-lg p-4 space-y-3" : "px-4 pb-3 space-y-3")}>
-            <Field label="Environment override">
+            <Field label={t("agentConfigForm.fields.environmentOverride")}>
               <div className="space-y-2">
                 <select
                   className={inputClass}
@@ -1197,7 +1226,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
                     mark("identity", "defaultEnvironmentId", nextValue || null);
                   }}
                 >
-                  <option value="">Default: {inheritedEnvironmentLabel}</option>
+                  <option value="">{t("agentConfigForm.messages.defaultEnvironmentOption", { environment: inheritedEnvironmentLabel })}</option>
                   {environmentOptions.map((environment) => (
                     <option key={environment.id} value={environment.id}>
                       {environment.name} · {environment.driver}
@@ -1214,8 +1243,8 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
       <div className={cn(!cards && (isCreate ? "border-t border-border" : "border-b border-border"))}>
         <div className={cn(cards ? "flex items-center justify-between mb-3" : "px-4 py-2 flex items-center justify-between gap-2")}>
           {cards
-            ? <h3 className="text-sm font-medium">Adapter</h3>
-            : <span className="text-xs font-medium text-muted-foreground">Adapter</span>
+            ? <h3 className="text-sm font-medium">{t("agentConfigForm.sections.adapter")}</h3>
+            : <span className="text-xs font-medium text-muted-foreground">{t("agentConfigForm.sections.adapter")}</span>
           }
           {showInlineAdapterTestEnvironmentButton && (
             <Button
@@ -1232,7 +1261,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
         </div>
         <div className={cn(cards ? "border border-border rounded-lg p-4 space-y-3" : "px-4 pb-3 space-y-3")}>
           {showAdapterTypeField && (
-            <Field label="Adapter type" hint={help.adapterType}>
+            <Field label={t("agentConfigForm.fields.adapterType")} hint={help.adapterType}>
               <AdapterTypeDropdown
                 value={adapterType}
                 disabledTypes={disabledTypes}
@@ -1291,7 +1320,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
               {testActionError
                 ?? (testEnvironment.error instanceof Error
                   ? testEnvironment.error.message
-                  : "Environment test failed")}
+                  : t("agentConfigForm.messages.environmentTestFailed"))}
             </div>
           )}
 
@@ -1301,7 +1330,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
 
           {/* Working directory */}
           {showLegacyWorkingDirectoryField && (
-            <Field label="Working directory (deprecated)" hint={help.cwd}>
+            <Field label={t("agentConfigForm.fields.workingDirectoryDeprecated")} hint={help.cwd}>
               <div className="flex items-center gap-2 rounded-md border border-border px-2.5 py-1.5">
                 <FolderOpen className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                 <DraftInput
@@ -1317,7 +1346,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
                   }
                   immediate
                   className="w-full bg-transparent outline-none text-sm font-mono placeholder:text-muted-foreground/40"
-                  placeholder="/path/to/project"
+                  placeholder={t("agentConfigForm.placeholders.pathToProject")}
                 />
                 <ChoosePathButton />
               </div>
@@ -1335,11 +1364,11 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
       {isLocal && (
         <div className={cn(!cards && "border-b border-border")}>
           {cards
-            ? <h3 className="text-sm font-medium mb-3">Permissions &amp; Configuration</h3>
-            : <div className="px-4 py-2 text-xs font-medium text-muted-foreground">Permissions &amp; Configuration</div>
+            ? <h3 className="text-sm font-medium mb-3">{t("agentConfigForm.sections.permissionsConfiguration")}</h3>
+            : <div className="px-4 py-2 text-xs font-medium text-muted-foreground">{t("agentConfigForm.sections.permissionsConfiguration")}</div>
           }
           <div className={cn(cards ? "border border-border rounded-lg p-4 space-y-3" : "px-4 pb-3 space-y-3")}>
-              <Field label="Command" hint={help.localCommand}>
+              <Field label={t("agentConfigForm.fields.command")} hint={help.localCommand}>
                 <DraftInput
                   value={
                     isCreate
@@ -1375,7 +1404,9 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
 
               {supportsModelProfiles && (
                 <div className="text-(length:--text-micro) uppercase tracking-wide text-muted-foreground">
-                  {adapterType === "opencode_9router" ? "Primary combo" : "Primary model"}
+                  {adapterType === "opencode_9router"
+                    ? t("agentConfigForm.test.primaryCombo")
+                    : t("agentConfigForm.test.primaryModel")}
                 </div>
               )}
               <ModelDropdown
@@ -1410,32 +1441,48 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
                     : undefined
                 }
                 refreshingModels={refreshingModels}
-                refreshModelsLabel={adapterType === "opencode_9router" ? "Refresh combos" : undefined}
+                refreshModelsLabel={adapterType === "opencode_9router" ? t("agentConfigForm.actions.refreshCombos") : undefined}
                 loadingModels={loadingAdapterModels}
-                label={adapterType === "opencode_9router" ? "Combo" : "Model"}
-                detectModelLabel="Detect model"
-                emptyDetectHint="No model detected. Select or enter one manually."
+                label={adapterType === "opencode_9router" ? t("agentConfigForm.fields.combo") : t("agentConfigForm.fields.model")}
+                detectModelLabel={t("agentConfigForm.actions.detectModel")}
+                emptyDetectHint={t("agentConfigForm.messages.noModelDetected")}
               />
               {(refreshModelsError || fetchedModelsError) && (
                 <p className="text-xs text-destructive">
                   {refreshModelsError
                     ?? (fetchedModelsError instanceof Error
                       ? fetchedModelsError.message
-                      : "Failed to load adapter models.")}
+                      : t("agentConfigForm.messages.failedToLoadAdapterModels"))}
                 </p>
               )}
               {adapterType === "opencode_local"
                 && currentDefaultEnvironment
                 && currentDefaultEnvironment.driver !== "local" && (
                 <p className="text-xs text-muted-foreground">
-                  Live OpenCode model discovery only runs for Local environments. Using the curated list and manual entry for {currentDefaultEnvironment.name}.
+                  {t("agentConfigForm.messages.openCodeLocalDiscovery", {
+                    environment: currentDefaultEnvironment.name,
+                  })}
                 </p>
               )}
               {adapterType === "opencode_9router" && models.length > 0 && (
                 <p className="text-xs text-muted-foreground">
-                  {models.length} combo{models.length === 1 ? "" : "s"} found in 9Router.
+                  {t("agentConfigForm.messages.combosFound", { count: models.length })}
                   {nineRouterDiscoveryFetchedAt
-                    ? ` ${nineRouterDiscoveryCached ? "Cached" : "Fetched"} ${new Date(nineRouterDiscoveryFetchedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}.`
+                    ? ` ${nineRouterDiscoveryCached
+                      ? t("agentConfigForm.messages.cachedAt", {
+                          time: new Date(nineRouterDiscoveryFetchedAt).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            second: "2-digit",
+                          }),
+                        })
+                      : t("agentConfigForm.messages.fetchedAt", {
+                          time: new Date(nineRouterDiscoveryFetchedAt).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            second: "2-digit",
+                          }),
+                        })}`
                     : ""}
                 </p>
               )}
@@ -1444,8 +1491,8 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
                 && !models.some((entry) => entry.id === currentModelId) && (
                 <p className="text-xs text-amber-500">
                   {models.length > 0
-                    ? "Saved combo is no longer present in current 9Router discovery."
-                    : "Saved combo is no longer present in current 9Router discovery, or the current discovery returned no combos."}
+                    ? t("agentConfigForm.messages.savedComboMissing")
+                    : t("agentConfigForm.messages.savedComboMissingNoCombos")}
                 </p>
               )}
 
@@ -1480,14 +1527,14 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
                     codexSearchEnabled &&
                     currentThinkingEffort === "minimal" && (
                       <p className="text-xs text-amber-400">
-                        Codex may reject `minimal` thinking when search is enabled.
+                        {t("agentConfigForm.messages.codexMinimalSearchWarning")}
                       </p>
                     )}
                 </>
               )}
               {!isCreate && typeof config.bootstrapPromptTemplate === "string" && config.bootstrapPromptTemplate && (
                 <>
-                  <Field label="Bootstrap prompt (legacy)" hint={help.bootstrapPrompt}>
+                  <Field label={t("agentConfigForm.fields.bootstrapPromptLegacy")} hint={help.bootstrapPrompt}>
                     <MarkdownEditor
                       value={eff(
                         "adapterConfig",
@@ -1497,7 +1544,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
                       onChange={(v) =>
                         mark("adapterConfig", "bootstrapPromptTemplate", v || undefined)
                       }
-                      placeholder="Optional initial setup prompt for the first run"
+                      placeholder={t("agentConfigForm.placeholders.bootstrapPrompt")}
                       contentClassName="min-h-(--sz-44px) text-sm font-mono"
                       imageUploadHandler={async (file) => {
                         const namespace = `agents/${props.agent.id}/bootstrap-prompt`;
@@ -1507,7 +1554,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
                     />
                   </Field>
                   <div className="rounded-md border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
-                    Bootstrap prompt is legacy and will be removed in a future release. Consider moving this content into the agent&apos;s prompt template or instructions file instead.
+                    {t("agentConfigForm.messages.bootstrapPromptLegacyNotice")}
                   </div>
                 </>
               )}
@@ -1516,7 +1563,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
               )}
               <uiAdapter.ConfigFields {...adapterFieldProps} />
 
-              <Field label="Extra args (comma-separated)" hint={help.extraArgs}>
+              <Field label={t("agentConfigForm.fields.extraArgs")} hint={help.extraArgs}>
                 <DraftInput
                   value={
                     isCreate
@@ -1529,11 +1576,11 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
                       : mark("adapterConfig", "extraArgs", v?.trim() ? parseCommaArgs(v) : null)
                   }
                   className={inputClass}
-                  placeholder="e.g. --verbose, --foo=bar"
+                  placeholder={t("agentConfigForm.placeholders.extraArgs")}
                 />
               </Field>
 
-              <Field label="Environment variables" hint={help.envVars}>
+              <Field label={t("agentConfigForm.fields.environmentVariables")} hint={help.envVars}>
                 <EnvironmentVariablesEditor
                   ref={environmentVariablesEditorRef}
                   value={
@@ -1557,7 +1604,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
               </Field>
 
               {!isCreate && (
-                <Field label="Secret access" hint={help.secretAccess}>
+                <Field label={t("agentConfigForm.fields.secretAccess")} hint={help.secretAccess}>
                   <AgentSecretAccessEditor
                     config={{ ...config, ...overlay.adapterConfig }}
                     secrets={availableSecrets}
@@ -1569,7 +1616,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
               {/* Edit-only: timeout + grace period */}
               {!isCreate && (
                 <>
-                  <Field label="Timeout (sec)" hint={help.timeoutSec}>
+                  <Field label={t("agentConfigForm.fields.timeoutSec")} hint={help.timeoutSec}>
                     <DraftNumberInput
                       value={eff(
                         "adapterConfig",
@@ -1581,7 +1628,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
                       className={inputClass}
                     />
                   </Field>
-                  <Field label="Interrupt grace period (sec)" hint={help.graceSec}>
+                  <Field label={t("agentConfigForm.fields.interruptGracePeriodSec")} hint={help.graceSec}>
                     <DraftNumberInput
                       value={eff(
                         "adapterConfig",
