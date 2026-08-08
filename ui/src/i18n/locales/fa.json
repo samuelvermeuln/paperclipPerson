@@ -16,12 +16,28 @@
       "duplicate": "Duplicate",
       "edit": "Edit",
       "restore": "Restore",
-      "resume": "Resume"
+      "resume": "Resume",
+      "connect": "Connect",
+      "open": "Open"
     },
     "filters": {
       "active": "Active",
       "archived": "Archived"
-    }
+    },
+    "membership": {
+      "join": "Join",
+      "leave": "Leave",
+      "joining": "Joining...",
+      "leaving": "Leaving...",
+      "joinNamed": "Join {{name}}",
+      "leaveNamed": "Leave {{name}}"
+    },
+    "comingSoon": "Coming soon",
+    "pageSection": "Page section",
+    "sort": "Sort",
+    "ascending": "Asc",
+    "descending": "Desc",
+    "none": "—"
   },
   "sidebar": {
     "activity": "Activity",
@@ -70,7 +86,8 @@
     "selectCompany": "Select company",
     "signOut": "Sign out",
     "signingOut": "Signing out...",
-    "switchCompany": "Switch company"
+    "switchCompany": "Switch company",
+    "reorderNamed": "Reorder {{name}}"
   },
   "tools": {
     "selectCompany": "Select a company to open advanced setup.",
@@ -187,6 +204,124 @@
       "duplicated": "Profile duplicated",
       "restoreFailed": "Could not restore",
       "restored": "Profile restored"
+    }
+  },
+  "apps": {
+    "shared": {
+      "connectOwnTool": "Connect your own tool",
+      "connectOwnToolDescription": "Paste the URL from a custom or self-hosted MCP server and review its actions before enabling it.",
+      "connectCta": "Connect →",
+      "developerToolsAdvanced": "Developer tools (advanced)"
+    },
+    "browse": {
+      "title": "Browse",
+      "description": "Connect Zapier or your own MCP server. More integrations are coming soon.",
+      "selectCompany": "Select a company to browse apps.",
+      "searchPlaceholder": "Search apps…",
+      "searchAriaLabel": "Search apps",
+      "popular": "Popular",
+      "results": "Results ({{count}})",
+      "allApps": "All apps",
+      "noMatches": "No planned apps match “{{query}}”.",
+      "previewsNote": "Zapier connects with the MCP URL it gives you. Other listed integrations are previews."
+    },
+    "connections": {
+      "title": "Connections",
+      "description": "The tools you’ve connected, and whether they’re working.",
+      "selectCompany": "Select a company to manage apps.",
+      "connectApp": "Connect an app",
+      "filters": {
+        "all": "All ({{count}})",
+        "attention": "Needs attention ({{count}})"
+      },
+      "reviewBanner": {
+        "one": "1 action is waiting for your OK",
+        "other": "{{count}} actions are waiting for your OK",
+        "description": "Your agents paused to check with you before making a change.",
+        "cta": "Review →"
+      },
+      "attentionBanner": {
+        "one": "1 app needs attention",
+        "other": "{{count}} apps need attention",
+        "cta": "Fix →"
+      },
+      "table": {
+        "app": "App",
+        "lastUsed": "Last used"
+      },
+      "hints": {
+        "attention": "The key stopped working — reconnect to fix.",
+        "paused": "Paused — agents can’t use it right now.",
+        "notConnected": "Connect it so agents can use it."
+      },
+      "actions": {
+        "reconnect": "Reconnect"
+      },
+      "status": {
+        "healthy": "Healthy",
+        "needsAttention": "Needs attention",
+        "paused": "Paused",
+        "notConnected": "Not connected"
+      },
+      "actionsOn": "{{count}} on",
+      "footer": "Apps you connect become available to every agent unless you change “Who can use it”.",
+      "and": " and ",
+      "moreSummary": "{{names}} and {{count}} more",
+      "empty": {
+        "title": "No connections yet.",
+        "descriptionBefore": "Add one from ",
+        "descriptionAfter": " to give your agents the tools they need.",
+        "browseApps": "Browse apps"
+      }
+    }
+  },
+  "agents": {
+    "title": "Agents",
+    "tabs": {
+      "all": "All",
+      "paused": "Paused",
+      "error": "Error",
+      "builtin": "Built-in"
+    },
+    "selectCompany": "Select a company to view agents.",
+    "setUp": "Set up",
+    "invalidReportingChain": "Invalid reporting chain",
+    "runHeartbeat": "Run Heartbeat",
+    "viewMode": "View mode",
+    "listView": "List view",
+    "orgChartView": "Org chart view",
+    "newAgent": "New Agent",
+    "count": {
+      "one": "1 agent",
+      "other": "{{count}} agents"
+    },
+    "empty": "Create your first agent to get started.",
+    "noMatch": "No agents match the selected status.",
+    "noHierarchy": "No organizational hierarchy defined.",
+    "live": "Live",
+    "liveCount": "Live ({{count}})"
+  },
+  "projects": {
+    "title": "Projects",
+    "selectCompany": "Select a company to view projects.",
+    "sort": {
+      "label": "Sort: {{label}}",
+      "name": "Name",
+      "updated": "Updated",
+      "created": "Created",
+      "targetDate": "Target date"
+    },
+    "addProject": "Add Project",
+    "empty": "No projects yet.",
+    "myProjects": "My Projects",
+    "otherProjects": "Other Projects",
+    "projectCount": {
+      "one": "1 project",
+      "other": "{{count}} projects"
+    },
+    "taskCount": {
+      "one": "1 task",
+      "other": "{{count}} tasks"
     }
   }
 }

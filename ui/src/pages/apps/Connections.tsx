@@ -13,6 +13,7 @@ import {
 import { useNavigate } from "@/lib/router";
 import { useCompany } from "@/context/CompanyContext";
 import { useBreadcrumbs } from "@/context/BreadcrumbContext";
+import { useTranslation } from "@/i18n";
 import { queryKeys } from "@/lib/queryKeys";
 import { toolsApi } from "@/api/tools";
 import { Button } from "@/components/ui/button";
@@ -33,9 +34,10 @@ const BROWSE_HREF = "/apps/browse";
 
 type StatusFilter = "all" | "attention";
 
+type AppStatusTone = "connected" | "attention" | "paused" | "not_connected";
+
 type AppStatus = {
-  label: "Healthy" | "Needs attention" | "Paused" | "Not connected";
-  tone: "connected" | "attention" | "paused" | "not_connected";
+  tone: AppStatusTone;
 };
 
 type AppRow = {
@@ -54,19 +56,19 @@ type AppRow = {
  */
 function statusFor(application: ToolApplication, connections: ToolConnection[]): AppStatus {
   if (connections.length === 0) {
-    return { label: "Not connected", tone: "not_connected" };
+    return { tone: "not_connected" };
   }
   if (
     application.status === "disabled" ||
     application.status === "archived" ||
     connections.every((connection) => connection.enabled === false || connection.status === "disabled")
   ) {
-    return { label: "Paused", tone: "paused" };
+    return { tone: "paused" };
   }
   if (connections.some((connection) => isAttentionHealthStatus(connection.healthStatus))) {
-    return { label: "Needs attention", tone: "attention" };
+    return { tone: "attention" };
   }
-  return { label: "Healthy", tone: "connected" };
+  return { tone: "connected" };
 }
 
 /** The single health-derived predicate that drives highlight, pill, banner, filter (F6). */
@@ -74,7 +76,7 @@ function rowNeedsAttention(row: AppRow): boolean {
   return row.status.tone === "attention";
 }
 
-const STATUS_CLASS: Record<AppStatus["tone"], string> = {
+const STATUS_CLASS: Record<AppStatusTone, string> = {
   connected: "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
   attention: "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300",
   paused: "border-border bg-muted text-muted-foreground",
@@ -85,17 +87,18 @@ export function Connections() {
   const navigate = useNavigate();
   const { selectedCompany, selectedCompanyId } = useCompany();
   const { setBreadcrumbs } = useBreadcrumbs();
+  const { t } = useTranslation();
   const reviewCount = useReviewCount();
   const [filter, setFilter] = useState<StatusFilter>("all");
 
   useEffect(() => {
     setBreadcrumbs([
-      { label: selectedCompany?.name ?? "Company", href: "/dashboard" },
-      { label: "Apps", href: "/apps" },
-      { label: "Connections" },
+      { label: selectedCompany?.name ?? t("common.company", { defaultValue: "Company" }), href: "/dashboard" },
+      { label: t("sidebar.apps", { defaultValue: "Apps" }), href: "/apps" },
+      { label: t("apps.connections.title", { defaultValue: "Connections" }) },
     ]);
     return () => setBreadcrumbs([]);
-  }, [setBreadcrumbs, selectedCompany?.name]);
+  }, [setBreadcrumbs, selectedCompany?.name, t]);
 
   const galleryQuery = useQuery({
     queryKey: queryKeys.apps.gallery(selectedCompanyId ?? "__none__"),
@@ -188,7 +191,11 @@ export function Connections() {
   const visibleRows = filter === "attention" ? rowsNeedingAttention : rows;
 
   if (!selectedCompanyId) {
-    return <div className="p-6 text-sm text-muted-foreground">Select a company to manage apps.</div>;
+    return (
+      <div className="p-6 text-sm text-muted-foreground">
+        {t("apps.connections.selectCompany", { defaultValue: "Select a company to manage apps." })}
+      </div>
+    );
   }
 
   const loading = applicationsQuery.isLoading || connectionsQuery.isLoading || galleryQuery.isLoading;
@@ -206,17 +213,23 @@ export function Connections() {
         <div className="space-y-5">
           <header className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <h1 className="text-2xl font-bold tracking-tight">Connections</h1>
+              <h1 className="text-2xl font-bold tracking-tight">
+                {t("apps.connections.title", { defaultValue: "Connections" })}
+              </h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                The tools you’ve connected, and whether they’re working.
+                {t("apps.connections.description", {
+                  defaultValue: "The tools you’ve connected, and whether they’re working.",
+                })}
               </p>
             </div>
-            <Button onClick={() => navigate(BROWSE_HREF)}>Connect an app</Button>
+            <Button onClick={() => navigate(BROWSE_HREF)}>
+              {t("apps.connections.connectApp", { defaultValue: "Connect an app" })}
+            </Button>
           </header>
 
           <div className="flex flex-wrap items-center gap-2">
             <FilterChip active={filter === "all"} onClick={() => setFilter("all")}>
-              All ({rows.length})
+              {t("apps.connections.filters.all", { defaultValue: "All ({{count}})", count: rows.length })}
             </FilterChip>
             <FilterChip
               active={filter === "attention"}
@@ -224,7 +237,10 @@ export function Connections() {
               disabled={rowsNeedingAttention.length === 0}
               onClick={() => setFilter("attention")}
             >
-              Needs attention ({rowsNeedingAttention.length})
+              {t("apps.connections.filters.attention", {
+                defaultValue: "Needs attention ({{count}})",
+                count: rowsNeedingAttention.length,
+              })}
             </FilterChip>
           </div>
 
@@ -237,13 +253,24 @@ export function Connections() {
               <ShieldQuestion className="h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-semibold text-amber-900 dark:text-amber-100">
-                  {reviewCount} {reviewCount === 1 ? "action is" : "actions are"} waiting for your OK
+                  {reviewCount === 1
+                    ? t("apps.connections.reviewBanner.one", {
+                      defaultValue: "1 action is waiting for your OK",
+                    })
+                    : t("apps.connections.reviewBanner.other", {
+                      defaultValue: "{{count}} actions are waiting for your OK",
+                      count: reviewCount,
+                    })}
                 </div>
                 <div className="truncate text-xs text-amber-700 dark:text-amber-300">
-                  Your agents paused to check with you before making a change.
+                  {t("apps.connections.reviewBanner.description", {
+                    defaultValue: "Your agents paused to check with you before making a change.",
+                  })}
                 </div>
               </div>
-              <span className="shrink-0 text-xs font-semibold text-amber-800 dark:text-amber-200">Review →</span>
+              <span className="shrink-0 text-xs font-semibold text-amber-800 dark:text-amber-200">
+                {t("apps.connections.reviewBanner.cta", { defaultValue: "Review →" })}
+              </span>
             </button>
           )}
 
@@ -256,13 +283,22 @@ export function Connections() {
               <ShieldAlert className="h-5 w-5 shrink-0 text-red-600 dark:text-red-400" />
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-semibold text-red-900 dark:text-red-100">
-                  {rowsNeedingAttention.length} {rowsNeedingAttention.length === 1 ? "app needs" : "apps need"} attention
+                  {rowsNeedingAttention.length === 1
+                    ? t("apps.connections.attentionBanner.one", {
+                      defaultValue: "1 app needs attention",
+                    })
+                    : t("apps.connections.attentionBanner.other", {
+                      defaultValue: "{{count}} apps need attention",
+                      count: rowsNeedingAttention.length,
+                    })}
                 </div>
                 <div className="truncate text-xs text-red-700 dark:text-red-300">
-                  {floatSummary(rowsNeedingAttention)}
+                  {floatSummary(rowsNeedingAttention, t)}
                 </div>
               </div>
-              <span className="shrink-0 text-xs font-semibold text-red-800 dark:text-red-200">Fix →</span>
+              <span className="shrink-0 text-xs font-semibold text-red-800 dark:text-red-200">
+                {t("apps.connections.attentionBanner.cta", { defaultValue: "Fix →" })}
+              </span>
             </button>
           )}
 
@@ -270,10 +306,10 @@ export function Connections() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/40 text-left text-(length:--text-micro) font-semibold uppercase tracking-wide text-muted-foreground">
-                  <th className="px-4 py-2.5">App</th>
-                  <th className="px-4 py-2.5">Status</th>
-                  <th className="px-4 py-2.5">Actions</th>
-                  <th className="px-4 py-2.5">Last used</th>
+                  <th className="px-4 py-2.5">{t("apps.connections.table.app", { defaultValue: "App" })}</th>
+                  <th className="px-4 py-2.5">{t("sidebar.status", { defaultValue: "Status" })}</th>
+                  <th className="px-4 py-2.5">{t("profiles.actions", { defaultValue: "Actions" })}</th>
+                  <th className="px-4 py-2.5">{t("apps.connections.table.lastUsed", { defaultValue: "Last used" })}</th>
                   <th className="px-4 py-2.5" />
                 </tr>
               </thead>
@@ -283,20 +319,26 @@ export function Connections() {
                   const attention = rowNeedsAttention(row);
                   const hint =
                     status.tone === "attention"
-                      ? "The key stopped working — reconnect to fix."
+                      ? t("apps.connections.hints.attention", {
+                        defaultValue: "The key stopped working — reconnect to fix.",
+                      })
                       : status.tone === "paused"
-                        ? "Paused — agents can’t use it right now."
+                        ? t("apps.connections.hints.paused", {
+                          defaultValue: "Paused — agents can’t use it right now.",
+                        })
                         : status.tone === "not_connected"
-                          ? "Connect it so agents can use it."
-                        : null;
+                          ? t("apps.connections.hints.notConnected", {
+                            defaultValue: "Connect it so agents can use it.",
+                          })
+                          : null;
                   const appHref = primaryConnection
                     ? `/apps/${primaryConnection.id}`
                     : `/apps/app/${application.id}`;
                   const actionLabel = !primaryConnection
-                    ? "Connect"
+                    ? t("common.actions.connect", { defaultValue: "Connect" })
                     : status.tone === "attention"
-                      ? "Reconnect"
-                      : "Open";
+                      ? t("apps.connections.actions.reconnect", { defaultValue: "Reconnect" })
+                      : t("common.actions.open", { defaultValue: "Open" });
                   return (
                     <tr
                       key={application.id}
@@ -330,15 +372,23 @@ export function Connections() {
                             STATUS_CLASS[status.tone],
                           )}
                         >
-                          {status.label}
+                          {status.tone === "connected"
+                            ? t("apps.connections.status.healthy", { defaultValue: "Healthy" })
+                            : status.tone === "attention"
+                              ? t("apps.connections.status.needsAttention", { defaultValue: "Needs attention" })
+                              : status.tone === "paused"
+                                ? t("apps.connections.status.paused", { defaultValue: "Paused" })
+                                : t("apps.connections.status.notConnected", { defaultValue: "Not connected" })}
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <span className="text-xs text-muted-foreground">{row.actionCount} on</span>
+                        <span className="text-xs text-muted-foreground">
+                          {t("apps.connections.actionsOn", { defaultValue: "{{count}} on", count: row.actionCount })}
+                        </span>
                       </td>
                       <td className="px-4 py-3">
                         <span className="text-xs text-muted-foreground">
-                          {row.lastUsedAt ? timeAgo(row.lastUsedAt) : "—"}
+                          {row.lastUsedAt ? timeAgo(row.lastUsedAt) : t("common.none", { defaultValue: "—" })}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right">
@@ -362,7 +412,9 @@ export function Connections() {
 
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-xs text-muted-foreground">
-              Apps you connect become available to every agent unless you change “Who can use it”.
+              {t("apps.connections.footer", {
+                defaultValue: "Apps you connect become available to every agent unless you change “Who can use it”.",
+              })}
             </p>
             <AdvancedToolsLink />
           </div>
@@ -413,19 +465,34 @@ function enabledActionCount(profile: ToolProfileWithDetails): number {
   return count;
 }
 
-function floatSummary(rows: AppRow[]): string {
+function floatSummary(
+  rows: AppRow[],
+  t: (key: string, options?: Record<string, unknown>) => string,
+): string {
   const names = rows.map((row) => humanizeConnectionDisplayName(row.application.name));
-  if (names.length <= 2) return names.join(" and ");
-  return `${names.slice(0, 2).join(", ")} and ${names.length - 2} more`;
+  if (names.length <= 2) {
+    return names.join(t("apps.connections.and", { defaultValue: " and " }));
+  }
+  return t("apps.connections.moreSummary", {
+    defaultValue: "{{names}} and {{count}} more",
+    names: names.slice(0, 2).join(", "),
+    count: names.length - 2,
+  });
 }
 
 function EmptyConnections({ onBrowse }: { onBrowse: () => void }) {
+  const { t } = useTranslation();
+
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-bold tracking-tight">Connections</h1>
+        <h1 className="text-2xl font-bold tracking-tight">
+          {t("apps.connections.title", { defaultValue: "Connections" })}
+        </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          The tools you’ve connected, and whether they’re working.
+          {t("apps.connections.description", {
+            defaultValue: "The tools you’ve connected, and whether they’re working.",
+          })}
         </p>
       </header>
 
@@ -433,13 +500,22 @@ function EmptyConnections({ onBrowse }: { onBrowse: () => void }) {
         <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-muted">
           <AppWindow className="h-6 w-6 text-muted-foreground" />
         </div>
-        <p className="mt-4 text-sm font-medium text-foreground">No connections yet.</p>
+        <p className="mt-4 text-sm font-medium text-foreground">
+          {t("apps.connections.empty.title", { defaultValue: "No connections yet." })}
+        </p>
         <p className="mt-1 text-sm text-muted-foreground">
-          Add one from <span className="font-medium text-foreground">Apps</span> to give your agents
-          the tools they need.
+          {t("apps.connections.empty.descriptionBefore", {
+            defaultValue: "Add one from ",
+          })}
+          <span className="font-medium text-foreground">
+            {t("sidebar.apps", { defaultValue: "Apps" })}
+          </span>
+          {t("apps.connections.empty.descriptionAfter", {
+            defaultValue: " to give your agents the tools they need.",
+          })}
         </p>
         <Button className="mt-6" onClick={onBrowse}>
-          Browse apps
+          {t("apps.connections.empty.browseApps", { defaultValue: "Browse apps" })}
         </Button>
       </div>
     </div>

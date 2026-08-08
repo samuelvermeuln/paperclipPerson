@@ -68,6 +68,7 @@ function SortableCompanyItem({
   isSelected: boolean;
   onSelect: (company: Company) => void;
 }) {
+  const { t } = useTranslation();
   const {
     attributes,
     listeners,
@@ -106,7 +107,10 @@ function SortableCompanyItem({
         <button
           type="button"
           ref={setActivatorNodeRef}
-          aria-label={`Reordenar ${company.name}`}
+          aria-label={t("companyMenu.reorderNamed", {
+            defaultValue: `Reorder ${company.name}`,
+            name: company.name,
+          })}
           className="inline-flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-(length:--rad-2) focus-visible:ring-ring"
           onClick={(event) => {
             event.preventDefault();

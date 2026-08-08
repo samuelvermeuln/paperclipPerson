@@ -16,12 +16,28 @@
       "duplicate": "Duplicar",
       "edit": "Editar",
       "restore": "Restaurar",
-      "resume": "Retomar"
+      "resume": "Retomar",
+      "connect": "Conectar",
+      "open": "Abrir"
     },
     "filters": {
       "active": "Ativos",
       "archived": "Arquivados"
-    }
+    },
+    "membership": {
+      "join": "Entrar",
+      "leave": "Sair",
+      "joining": "Entrando...",
+      "leaving": "Saindo...",
+      "joinNamed": "Entrar em {{name}}",
+      "leaveNamed": "Sair de {{name}}"
+    },
+    "comingSoon": "Em breve",
+    "pageSection": "Seção da página",
+    "sort": "Ordenar",
+    "ascending": "Asc",
+    "descending": "Desc",
+    "none": "—"
   },
   "sidebar": {
     "activity": "Atividade",
@@ -70,7 +86,8 @@
     "selectCompany": "Selecionar empresa",
     "signOut": "Sair",
     "signingOut": "Saindo...",
-    "switchCompany": "Trocar empresa"
+    "switchCompany": "Trocar empresa",
+    "reorderNamed": "Reordenar {{name}}"
   },
   "tools": {
     "selectCompany": "Selecione uma empresa para abrir a configuração avançada.",
@@ -187,6 +204,124 @@
       "duplicated": "Perfil duplicado",
       "restoreFailed": "Não foi possível restaurar",
       "restored": "Perfil restaurado"
+    }
+  },
+  "apps": {
+    "shared": {
+      "connectOwnTool": "Conecte sua própria ferramenta",
+      "connectOwnToolDescription": "Cole a URL de um servidor MCP personalizado ou auto-hospedado e revise as ações antes de habilitá-lo.",
+      "connectCta": "Conectar →",
+      "developerToolsAdvanced": "Ferramentas de desenvolvedor (avançado)"
+    },
+    "browse": {
+      "title": "Explorar",
+      "description": "Conecte o Zapier ou seu próprio servidor MCP. Mais integrações chegarão em breve.",
+      "selectCompany": "Selecione uma empresa para explorar apps.",
+      "searchPlaceholder": "Buscar apps…",
+      "searchAriaLabel": "Buscar apps",
+      "popular": "Populares",
+      "results": "Resultados ({{count}})",
+      "allApps": "Todos os apps",
+      "noMatches": "Nenhum app planejado corresponde a “{{query}}”.",
+      "previewsNote": "O Zapier conecta com a URL MCP que ele fornece. As outras integrações listadas são prévias."
+    },
+    "connections": {
+      "title": "Conexões",
+      "description": "As ferramentas que você conectou e se elas estão funcionando.",
+      "selectCompany": "Selecione uma empresa para gerenciar apps.",
+      "connectApp": "Conectar app",
+      "filters": {
+        "all": "Todos ({{count}})",
+        "attention": "Precisam de atenção ({{count}})"
+      },
+      "reviewBanner": {
+        "one": "1 ação está aguardando seu OK",
+        "other": "{{count}} ações estão aguardando seu OK",
+        "description": "Seus agentes pausaram para confirmar com você antes de fazer uma mudança.",
+        "cta": "Revisar →"
+      },
+      "attentionBanner": {
+        "one": "1 app precisa de atenção",
+        "other": "{{count}} apps precisam de atenção",
+        "cta": "Corrigir →"
+      },
+      "table": {
+        "app": "App",
+        "lastUsed": "Último uso"
+      },
+      "hints": {
+        "attention": "A chave parou de funcionar — reconecte para corrigir.",
+        "paused": "Pausado — os agentes não podem usá-lo agora.",
+        "notConnected": "Conecte para que os agentes possam usar."
+      },
+      "actions": {
+        "reconnect": "Reconectar"
+      },
+      "status": {
+        "healthy": "Saudável",
+        "needsAttention": "Precisa de atenção",
+        "paused": "Pausado",
+        "notConnected": "Não conectado"
+      },
+      "actionsOn": "{{count}} ativadas",
+      "footer": "Os apps que você conecta ficam disponíveis para todos os agentes, a menos que você altere “Quem pode usar”.",
+      "and": " e ",
+      "moreSummary": "{{names}} e mais {{count}}",
+      "empty": {
+        "title": "Ainda não há conexões.",
+        "descriptionBefore": "Adicione uma em ",
+        "descriptionAfter": " para dar aos seus agentes as ferramentas de que precisam.",
+        "browseApps": "Explorar apps"
+      }
+    }
+  },
+  "agents": {
+    "title": "Agentes",
+    "tabs": {
+      "all": "Todos",
+      "paused": "Pausados",
+      "error": "Erro",
+      "builtin": "Nativos"
+    },
+    "selectCompany": "Selecione uma empresa para ver os agentes.",
+    "setUp": "Configurar",
+    "invalidReportingChain": "Cadeia de reporte inválida",
+    "runHeartbeat": "Executar heartbeat",
+    "viewMode": "Modo de visualização",
+    "listView": "Visualização em lista",
+    "orgChartView": "Visualização em organograma",
+    "newAgent": "Novo agente",
+    "count": {
+      "one": "1 agente",
+      "other": "{{count}} agentes"
+    },
+    "empty": "Crie seu primeiro agente para começar.",
+    "noMatch": "Nenhum agente corresponde ao status selecionado.",
+    "noHierarchy": "Nenhuma hierarquia organizacional definida.",
+    "live": "Ao vivo",
+    "liveCount": "Ao vivo ({{count}})"
+  },
+  "projects": {
+    "title": "Projetos",
+    "selectCompany": "Selecione uma empresa para ver os projetos.",
+    "sort": {
+      "label": "Ordenar: {{label}}",
+      "name": "Nome",
+      "updated": "Atualizado",
+      "created": "Criado",
+      "targetDate": "Data alvo"
+    },
+    "addProject": "Adicionar projeto",
+    "empty": "Ainda não há projetos.",
+    "myProjects": "Meus projetos",
+    "otherProjects": "Outros projetos",
+    "projectCount": {
+      "one": "1 projeto",
+      "other": "{{count}} projetos"
+    },
+    "taskCount": {
+      "one": "1 tarefa",
+      "other": "{{count}} tarefas"
     }
   }
 }
