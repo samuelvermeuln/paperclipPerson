@@ -206,6 +206,140 @@
       "restored": "Profile restored"
     }
   },
+  "agentConfigForm": {
+    "unsavedChanges": "Unsaved changes",
+    "actions": {
+      "save": "Save",
+      "saving": "Saving...",
+      "test": "Test",
+      "refreshCombos": "Refresh combos",
+      "detectModel": "Detect model",
+      "detectFromConfig": "Detect from config",
+      "redetectFromConfig": "Re-detect from config",
+      "detecting": "Detecting...",
+      "refreshing": "Refreshing...",
+      "refreshModels": "Refresh models"
+    },
+    "sections": {
+      "identity": "Identity",
+      "environment": "Environment",
+      "adapter": "Adapter",
+      "permissionsConfiguration": "Permissions & Configuration",
+      "runPolicy": "Run Policy",
+      "advancedRunPolicy": "Advanced Run Policy"
+    },
+    "fields": {
+      "name": "Name",
+      "title": "Title",
+      "reportsTo": "Reports to",
+      "chooseManager": "Choose manager…",
+      "capabilities": "Capabilities",
+      "promptTemplate": "Prompt Template",
+      "defaultEnvironment": "Default environment",
+      "environmentOverride": "Environment override",
+      "adapterType": "Adapter type",
+      "workingDirectoryDeprecated": "Working directory (deprecated)",
+      "command": "Command",
+      "combo": "Combo",
+      "model": "Model",
+      "bootstrapPromptLegacy": "Bootstrap prompt (legacy)",
+      "extraArgs": "Extra args (comma-separated)",
+      "environmentVariables": "Environment variables",
+      "secretAccess": "Secret access",
+      "timeoutSec": "Timeout (sec)",
+      "interruptGracePeriodSec": "Interrupt grace period (sec)",
+      "heartbeatOnInterval": "Heartbeat on interval",
+      "secondsShort": "sec",
+      "runHeartbeatEvery": "Run heartbeat every",
+      "wakeOnDemand": "Wake on demand",
+      "cooldownSec": "Cooldown (sec)",
+      "maxConcurrentRuns": "Max concurrent runs",
+      "continueAfterMaxTurnStop": "Continue after max-turn stop",
+      "continuationAttempts": "Continuation attempts",
+      "continuationDelaySec": "Continuation delay (sec)",
+      "thinkingEffort": "Thinking effort"
+    },
+    "placeholders": {
+      "agentName": "Agent name",
+      "titleExample": "e.g. VP of Engineering",
+      "capabilities": "Describe what this agent can do...",
+      "promptTemplate": "You are agent {{ agent.name }}. Your role is {{ agent.role }}...",
+      "pathToProject": "/path/to/project",
+      "bootstrapPrompt": "Optional initial setup prompt for the first run",
+      "extraArgs": "e.g. --verbose, --foo=bar",
+      "searchModels": "Search models...",
+      "searchModelsCreate": "Search models... (type to create)"
+    },
+    "messages": {
+      "promptTemplateNotice": "Prompt template is replayed on every heartbeat. Keep it compact and dynamic to avoid recurring token cost and cache churn.",
+      "kubernetesSandboxOnly": "This instance runs all agents in the Kubernetes sandbox. Local execution is disabled.",
+      "kubernetesSandbox": "Kubernetes sandbox",
+      "kubernetesEnvironmentMissing": "This instance requires the Kubernetes sandbox, but no managed Kubernetes environment is available for this company yet. Configure one before creating agents; execution will not fall back to local.",
+      "defaultEnvironmentOption": "Default: {{environment}}",
+      "selectCompanyToTest": "Select a company to test adapter environment",
+      "loadInstanceSettingsFailed": "Could not load instance settings to determine which environment to test in. Retry the test.",
+      "environmentTestFailed": "Environment test failed",
+      "failedToRefreshAdapterModels": "Failed to refresh adapter models.",
+      "failedToLoadAdapterModels": "Failed to load adapter models.",
+      "noModelDetected": "No model detected. Select or enter one manually.",
+      "openCodeLocalDiscovery": "Live OpenCode model discovery only runs for Local environments. Using the curated list and manual entry for {{environment}}.",
+      "combosFound": {
+        "one": "1 combo found in 9Router.",
+        "other": "{{count}} combos found in 9Router."
+      },
+      "cachedAt": "Cached {{time}}.",
+      "fetchedAt": "Fetched {{time}}.",
+      "savedComboMissing": "Saved combo is no longer present in current 9Router discovery.",
+      "savedComboMissingNoCombos": "Saved combo is no longer present in current 9Router discovery, or the current discovery returned no combos.",
+      "codexMinimalSearchWarning": "Codex may reject `minimal` thinking when search is enabled.",
+      "bootstrapPromptLegacyNotice": "Bootstrap prompt is legacy and will be removed in a future release. Consider moving this content into the agent's prompt template or instructions file instead."
+    },
+    "test": {
+      "primaryCombo": "Primary combo",
+      "primaryModel": "Primary model",
+      "cheapModel": "Cheap model"
+    },
+    "environmentResult": {
+      "passed": "Passed",
+      "warnings": "Warnings",
+      "failed": "Failed",
+      "hint": "Hint"
+    },
+    "badges": {
+      "experimental": "Experimental",
+      "current": "current",
+      "detected": "detected",
+      "config": "config"
+    },
+    "modelDropdown": {
+      "default": "Default",
+      "selectModelRequired": "Select model (required)",
+      "selectModel": "Select model",
+      "useManualModel": "Use manual model",
+      "loadingModels": "Loading models...",
+      "noModelDetectedManual": "No model detected yet. Enter a provider/model manually.",
+      "noModelsFound": "No models found."
+    },
+    "cheapModel": {
+      "adapterDefault": "Adapter default · {{model}}",
+      "noAdapterDefault": "No adapter default — choose a cheaper model",
+      "title": "Cheap model",
+      "description": "Used when a run requests the cheap profile (e.g. routine summaries). The primary model stays unchanged.",
+      "fallsBackToDefault": "No explicit cheap model selected — runtime falls back to {{model}}.",
+      "noSelectionNoDefault": "No cheap model selected and the adapter has no default. Cheap-lane runs will continue on the primary model with a fallback note."
+    },
+    "options": {
+      "auto": "Auto",
+      "minimal": "Minimal",
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "xhigh": "X-High",
+      "max": "Max",
+      "plan": "Plan",
+      "ask": "Ask"
+    }
+  },
   "apps": {
     "shared": {
       "connectOwnTool": "Connect your own tool",

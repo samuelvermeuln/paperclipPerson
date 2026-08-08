@@ -206,6 +206,140 @@
       "restored": "Perfil restaurado"
     }
   },
+  "agentConfigForm": {
+    "unsavedChanges": "Alterações não salvas",
+    "actions": {
+      "save": "Salvar",
+      "saving": "Salvando...",
+      "test": "Testar",
+      "refreshCombos": "Atualizar combos",
+      "detectModel": "Detectar modelo",
+      "detectFromConfig": "Detectar a partir da configuração",
+      "redetectFromConfig": "Redetectar a partir da configuração",
+      "detecting": "Detectando...",
+      "refreshing": "Atualizando...",
+      "refreshModels": "Atualizar modelos"
+    },
+    "sections": {
+      "identity": "Identidade",
+      "environment": "Ambiente",
+      "adapter": "Adaptador",
+      "permissionsConfiguration": "Permissões e configuração",
+      "runPolicy": "Política de execução",
+      "advancedRunPolicy": "Política de execução avançada"
+    },
+    "fields": {
+      "name": "Nome",
+      "title": "Cargo",
+      "reportsTo": "Reporta para",
+      "chooseManager": "Escolher gestor…",
+      "capabilities": "Capacidades",
+      "promptTemplate": "Template de prompt",
+      "defaultEnvironment": "Ambiente padrão",
+      "environmentOverride": "Substituição de ambiente",
+      "adapterType": "Tipo de adaptador",
+      "workingDirectoryDeprecated": "Diretório de trabalho (obsoleto)",
+      "command": "Comando",
+      "combo": "Combo",
+      "model": "Modelo",
+      "bootstrapPromptLegacy": "Prompt de bootstrap (legado)",
+      "extraArgs": "Argumentos extras (separados por vírgula)",
+      "environmentVariables": "Variáveis de ambiente",
+      "secretAccess": "Acesso a segredos",
+      "timeoutSec": "Timeout (seg)",
+      "interruptGracePeriodSec": "Período de tolerância da interrupção (seg)",
+      "heartbeatOnInterval": "Heartbeat em intervalo",
+      "secondsShort": "seg",
+      "runHeartbeatEvery": "Executar heartbeat a cada",
+      "wakeOnDemand": "Acordar sob demanda",
+      "cooldownSec": "Cooldown (seg)",
+      "maxConcurrentRuns": "Máximo de execuções simultâneas",
+      "continueAfterMaxTurnStop": "Continuar após parada por limite de turnos",
+      "continuationAttempts": "Tentativas de continuação",
+      "continuationDelaySec": "Atraso da continuação (seg)",
+      "thinkingEffort": "Esforço de raciocínio"
+    },
+    "placeholders": {
+      "agentName": "Nome do agente",
+      "titleExample": "ex.: VP de Engenharia",
+      "capabilities": "Descreva o que este agente pode fazer...",
+      "promptTemplate": "Você é o agente {{ agent.name }}. Seu papel é {{ agent.role }}...",
+      "pathToProject": "/caminho/do/projeto",
+      "bootstrapPrompt": "Prompt inicial opcional para a primeira execução",
+      "extraArgs": "ex.: --verbose, --foo=bar",
+      "searchModels": "Buscar modelos...",
+      "searchModelsCreate": "Buscar modelos... (digite para criar)"
+    },
+    "messages": {
+      "promptTemplateNotice": "O template de prompt é reaplicado em cada heartbeat. Mantenha-o compacto e dinâmico para evitar custo recorrente de tokens e churn de cache.",
+      "kubernetesSandboxOnly": "Esta instância executa todos os agentes no sandbox Kubernetes. A execução local está desativada.",
+      "kubernetesSandbox": "sandbox Kubernetes",
+      "kubernetesEnvironmentMissing": "Esta instância exige o sandbox Kubernetes, mas ainda não há um ambiente Kubernetes gerenciado disponível para esta empresa. Configure um antes de criar agentes; a execução não voltará para o modo local.",
+      "defaultEnvironmentOption": "Padrão: {{environment}}",
+      "selectCompanyToTest": "Selecione uma empresa para testar o ambiente do adaptador",
+      "loadInstanceSettingsFailed": "Não foi possível carregar as configurações da instância para determinar em qual ambiente testar. Tente novamente.",
+      "environmentTestFailed": "O teste do ambiente falhou",
+      "failedToRefreshAdapterModels": "Não foi possível atualizar os modelos do adaptador.",
+      "failedToLoadAdapterModels": "Não foi possível carregar os modelos do adaptador.",
+      "noModelDetected": "Nenhum modelo detectado. Selecione ou informe um manualmente.",
+      "openCodeLocalDiscovery": "A descoberta dinâmica de modelos do OpenCode só funciona em ambientes locais. Usando a lista curada e entrada manual para {{environment}}.",
+      "combosFound": {
+        "one": "1 combo encontrado no 9Router.",
+        "other": "{{count}} combos encontrados no 9Router."
+      },
+      "cachedAt": "Em cache às {{time}}.",
+      "fetchedAt": "Buscado às {{time}}.",
+      "savedComboMissing": "O combo salvo não está mais presente na descoberta atual do 9Router.",
+      "savedComboMissingNoCombos": "O combo salvo não está mais presente na descoberta atual do 9Router, ou a descoberta atual não retornou combos.",
+      "codexMinimalSearchWarning": "O Codex pode rejeitar o raciocínio `minimal` quando a busca está habilitada.",
+      "bootstrapPromptLegacyNotice": "O prompt de bootstrap é legado e será removido em uma versão futura. Considere mover esse conteúdo para o template de prompt do agente ou para o arquivo de instruções."
+    },
+    "test": {
+      "primaryCombo": "Combo primário",
+      "primaryModel": "Modelo primário",
+      "cheapModel": "Modelo econômico"
+    },
+    "environmentResult": {
+      "passed": "Aprovado",
+      "warnings": "Avisos",
+      "failed": "Falhou",
+      "hint": "Dica"
+    },
+    "badges": {
+      "experimental": "Experimental",
+      "current": "atual",
+      "detected": "detectado",
+      "config": "config"
+    },
+    "modelDropdown": {
+      "default": "Padrão",
+      "selectModelRequired": "Selecione um modelo (obrigatório)",
+      "selectModel": "Selecione um modelo",
+      "useManualModel": "Usar modelo manual",
+      "loadingModels": "Carregando modelos...",
+      "noModelDetectedManual": "Nenhum modelo detectado ainda. Informe manualmente um provedor/modelo.",
+      "noModelsFound": "Nenhum modelo encontrado."
+    },
+    "cheapModel": {
+      "adapterDefault": "Padrão do adaptador · {{model}}",
+      "noAdapterDefault": "Nenhum padrão do adaptador — escolha um modelo mais barato",
+      "title": "Modelo econômico",
+      "description": "Usado quando uma execução solicita o perfil econômico (ex.: resumos de rotinas). O modelo primário permanece inalterado.",
+      "fallsBackToDefault": "Nenhum modelo econômico explícito selecionado — o runtime usa {{model}} como fallback.",
+      "noSelectionNoDefault": "Nenhum modelo econômico foi selecionado e o adaptador não tem padrão. Execuções na faixa econômica continuarão no modelo primário com uma observação de fallback."
+    },
+    "options": {
+      "auto": "Auto",
+      "minimal": "Minimal",
+      "low": "Baixo",
+      "medium": "Médio",
+      "high": "Alto",
+      "xhigh": "Muito alto",
+      "max": "Máximo",
+      "plan": "Planejar",
+      "ask": "Perguntar"
+    }
+  },
   "apps": {
     "shared": {
       "connectOwnTool": "Conecte sua própria ferramenta",
