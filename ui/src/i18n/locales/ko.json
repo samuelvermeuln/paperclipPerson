@@ -727,7 +727,10 @@
       "restoreTasks": "Restore {{count}} tasks",
       "resumeWork": "Resume work",
       "resumeSubtree": "Resume subtree",
-      "pauseWorkEllipsis": "Pause work..."
+      "pauseWorkEllipsis": "Pause work...",
+      "archiveFromInbox": "Archive from inbox",
+      "backToInbox": "Back to inbox",
+      "copyAsMarkdown": "Copy as markdown"
     },
     "composer": {
       "wakeAssigneeWhilePaused": "Sending this comment will wake {{name}} for triage while the subtree remains paused.",
@@ -820,7 +823,11 @@
       "insertedInline": "Inserted inline",
       "attachedToTask": "Attached to task",
       "noRunOutputYet": "No run output yet.",
-      "emptyConversation": "This task conversation is empty. Start with a message below."
+      "emptyConversation": "This task conversation is empty. Start with a message below.",
+      "deleteCommentDialog": {
+        "title": "Delete comment?",
+        "description": "This will replace the comment with a deleted-comment marker."
+      }
     },
     "toasts": {
       "taskUpdateFailed": "Task update failed",
@@ -878,6 +885,264 @@
       "noExecutionWorkspaceToReconcile": "This task has no execution workspace to reconcile.",
       "repairFailed": "Repair failed",
       "noExecutionWorkspaceToRepair": "This task has no execution workspace to repair."
+    },
+    "systemNotice": {
+      "defaults": {
+        "notice": "System notice",
+        "warning": "System warning",
+        "alert": "System alert"
+      },
+      "actions": {
+        "hideDetails": "Hide details",
+        "details": "Details"
+      },
+      "labels": {
+        "missingIssueDisposition": "Missing issue disposition",
+        "missingDispositionRecoveryBlocked": "Missing disposition recovery blocked",
+        "missingDisposition": "Missing disposition"
+      },
+      "sections": {
+        "requiredAction": "Required action",
+        "runEvidence": "Run evidence"
+      },
+      "rows": {
+        "sourceIssue": "Source issue",
+        "assignee": "Assignee",
+        "recoveryOwner": "Recovery owner",
+        "recoveryAction": "Recovery action",
+        "sourceAssignee": "Source assignee",
+        "suggestedAction": "Suggested action",
+        "validDispositions": "Valid dispositions",
+        "successfulRun": "Successful run",
+        "sourceRun": "Source run",
+        "correctiveHandoffRun": "Corrective handoff run",
+        "runStatus": "Run status",
+        "latestIssueStatus": "Latest issue status",
+        "latestHandoffRunStatus": "Latest handoff run status",
+        "normalizedCause": "Normalized cause",
+        "detectedProgress": "Detected progress",
+        "automaticRetry": "Automatic retry"
+      },
+      "messages": {
+        "needsDisposition": "Paperclip needs a disposition before this issue can continue.",
+        "recoveryBlocked": "Paperclip could not resolve this issue's missing disposition automatically. The issue is blocked on a recovery owner.",
+        "detectedProgressNoActionEvidence": "Run produced useful output but no concrete action evidence",
+        "chooseValidDispositionWithoutTranscript": "choose and record a valid issue disposition without copying transcript content"
+      },
+      "status": {
+        "succeeded": "succeeded",
+        "failed": "failed",
+        "running": "running",
+        "queued": "queued",
+        "inProgress": "in progress"
+      }
+    },
+    "blockedNotice": {
+      "linkedTask": "the linked task",
+      "linkedTasks": "the linked tasks",
+      "verbs": {
+        "itIs": "it is",
+        "theyAre": "they are"
+      },
+      "retryNow": {
+        "dueNow": "due now",
+        "scheduled": "scheduled",
+        "scheduledWithEta": "scheduled {{eta}}",
+        "description": "Paperclip will ask the assignee to choose the next step {{schedule}}. Retry now starts that follow-up immediately.",
+        "retrying": "Retrying...",
+        "alreadyPromoted": "Already promoted",
+        "promoted": "Promoted",
+        "retryNow": "Retry now"
+      },
+      "liveWork": {
+        "statusTitle": "{{status}} status",
+        "running": "running",
+        "task": "task",
+        "tasks": "tasks",
+        "title": "Waiting on live work",
+        "description": "Queued behind {{total}} {{noun}} being worked in order. This task resumes automatically when the chain is done. Comments still notify the assignee.",
+        "progressDone": "{{done}} of {{total}} done",
+        "progressRunning": "{{count}} running",
+        "progressAria": "Blocker chain progress",
+        "stepStatus": {
+          "done": "done",
+          "running": "running",
+          "queued": "queued"
+        },
+        "thisTaskResumes": "This task — resumes automatically when the chain is done",
+        "nowRunning": "Now running",
+        "blockedByParkedWork": "Blocked by parked work"
+      },
+      "nextStep": {
+        "title": "This task still needs a next step.",
+        "description": "A run finished successfully, but the task is still open. Paperclip needs someone to choose what happens next.",
+        "items": {
+          "doneOrCancelled": "Mark it done or cancelled.",
+          "reviewOrInput": "Send it for review or ask for input.",
+          "recordBlocker": "Record what is blocking it and who owns that blocker.",
+          "delegateOrContinue": "Delegate follow-up work or queue a continuation."
+        },
+        "askedAssignee": "Asked {{name}} to choose the next step",
+        "detectedProgress": "Detected progress: {{summary}}"
+      },
+      "messages": {
+        "stalledMultiple": "Work on this task is blocked by {{blockerLabel}}, but the chain is stalled in review without a clear next step. Resolve the stalled reviews below or remove them as blockers.",
+        "stalledSingle": "Work on this task is blocked by {{blockerLabel}}, but the chain is stalled in review without a clear next step. Resolve the stalled review below or remove it as a blocker.",
+        "reopenSuppressed": "A message won’t restart this task yet — it stays blocked by {{blockerLabel}} until {{verb}} done, then it reopens automatically. Comments still notify {{responsibleName}} for questions or triage in the meantime.",
+        "blockedUntilComplete": "Work on this task is blocked by {{blockerLabel}} until {{verb}} complete. Comments still notify the assignee for questions or triage.",
+        "blockedUntilTodo": "Work on this task is blocked until someone moves it back to To do. Comments still notify the assignee for questions or triage.",
+        "stillBlockedBy": "Still blocked by",
+        "andOtherTasks_one": "and {{count}} other task",
+        "andOtherTasks_other": "and {{count}} other tasks",
+        "stalledInReview": "Stalled in review",
+        "ultimatelyWaitingOn": "Ultimately waiting on"
+      }
+    },
+    "recoveryCard": {
+      "kindLabels": {
+        "missingDisposition": "Missing Disposition",
+        "strandedTask": "Stranded Task",
+        "workspaceValidation": "Workspace Validation",
+        "configurationValidation": "Configuration Validation",
+        "activeWatchdog": "Active Watchdog",
+        "taskNeedsNextStep": "Task Needs Next Step"
+      },
+      "headlines": {
+        "missingDisposition": "This task's run finished, but no next step was chosen. Choose what happens next — try the task again, mark it done, or send it for review.",
+        "strandedTask": "Paperclip retried this task's last run, but there is still no queued run, reviewer, blocker, or other next owner. To get it moving, choose what happens next — try the task again, mark it done, or send it for review.",
+        "workspaceValidation": "Paperclip stopped this run because the task's git workspace could not be validated.",
+        "configurationValidation": "Paperclip stopped before dispatching this run because required secret/env bindings are missing.",
+        "activeWatchdog": "The active run has been silent. Recovery is observing without interrupting it.",
+        "taskNeedsNextStep": "Paperclip could not find a clear next step for this open task. Choose whether to continue work, send it for review, mark it done, or record what is blocking it."
+      },
+      "stateLabels": {
+        "needed": "RECOVERY NEEDED",
+        "inProgress": "RECOVERY IN PROGRESS",
+        "observeOnly": "OBSERVING ACTIVE RUN",
+        "escalated": "RECOVERY ESCALATED",
+        "resolved": "RECOVERY RESOLVED"
+      },
+      "outcomes": {
+        "restored": "restored",
+        "handedBack": "handed back to original owner",
+        "ownerCompleted": "completed by recovery owner",
+        "delegated": "delegated to follow-up",
+        "falsePositive": "false positive",
+        "blocked": "blocked",
+        "escalated": "escalated",
+        "cancelled": "cancelled"
+      },
+      "aria": {
+        "needed": "needed",
+        "inProgress": "in progress",
+        "observeOnly": "observing active run",
+        "escalated": "escalated",
+        "resolved": "resolved",
+        "recoveryAction": "Recovery action: {{state}}"
+      },
+      "followUp": {
+        "wakeOwner": "An agent will be asked to choose the next step",
+        "boardEscalation": "Board will decide",
+        "manual": "Manual follow-up needed",
+        "manualRepairRequired": "Repair needed before retry",
+        "monitor": "Check scheduled",
+        "monitorWithInterval": "Check scheduled · {{interval}}"
+      },
+      "metadata": {
+        "owner": "Owner",
+        "recovery": "Recovery:",
+        "board": "Board",
+        "system": "System",
+        "unassignedPickOne": "unassigned — pick one to wake them",
+        "returnsTo": "Returns to:",
+        "sourceRun": "Source run",
+        "correctiveRun": "Corrective run",
+        "evidence": "Evidence",
+        "nextAction": "Next action",
+        "followUp": "Follow-up",
+        "attempt": "attempt {{count}} of {{max}}",
+        "timesOut": "Times out {{time}}",
+        "soon": "soon",
+        "resolution": "Resolution"
+      },
+      "resolution": {
+        "resolvedAs": "Resolved as {{outcome}}",
+        "resolvedAsSentence": "Recovery resolved as {{outcome}}."
+      },
+      "actions": {
+        "resolveRecovery": "Resolve recovery",
+        "resolve": "Resolve…",
+        "reconcileForward": "Reconcile forward & continue",
+        "reissueOnIsolatedWorkspace": "Re-issue on isolated workspace",
+        "recommended": "Recommended",
+        "reissueDescription": "Creates a fresh copy of this task on an isolated git worktree based on the live branch. Your current workspace and its commits are left untouched.",
+        "creating": "Creating…",
+        "createIsolatedReissue": "Create isolated re-issue"
+      },
+      "footer": {
+        "observing": "Recovery is observing without interrupting the live run.",
+        "staysOpen": "The card stays open until an explicit decision is recorded."
+      },
+      "workspace": {
+        "divergenceDiagnosis": "Divergence diagnosis",
+        "expectedRecorded": "Expected · recorded",
+        "liveCheckedOut": "Live · checked out",
+        "worktreeClaimedBy": "Worktree claimed by",
+        "activeRun": "(active run)",
+        "claimHeld": "(claim held)",
+        "losslessRepairBlocked": "the lossless repair can’t run while another workspace holds the live branch.",
+        "verifiedReconcileAnyway": "I’ve verified this — reconcile anyway",
+        "breakGlassTitle": "Break-glass reconciliation",
+        "breakGlassDescription": {
+          "before": "This overrides Paperclip’s safety check and points the recorded workspace at the live branch",
+          "highlight": "without an ancestry proof",
+          "after": "Confirm the divergence below and record why before continuing."
+        },
+        "recordedExpected": "Recorded · expected",
+        "detached": "detached",
+        "ancestryVerdict": "Ancestry verdict",
+        "reason": "Reason",
+        "reasonRequired": "required — recorded in the audit log",
+        "reasonPlaceholder": "e.g. Verified the live branch carries only the intended follow-up commits; safe to adopt.",
+        "reconciling": "Reconciling…",
+        "reconcileAnyway": "Reconcile anyway (break-glass)",
+        "uncommittedChanges": "Uncommitted changes",
+        "uncommittedChangesCount_one": "{{count}} uncommitted change",
+        "uncommittedChangesCount_other": "{{count}} uncommitted changes",
+        "repairWorkspaceAction": "Repair workspace — quarantine changes & restore branch",
+        "repairWorkspace": "Repair workspace",
+        "repairDescription": "This is lossless — no reason required. Your uncommitted changes are committed onto a fresh rescue branch, then the recorded branch is restored so the task can resume. The live branch is left exactly as it is.",
+        "dirtyChanges": "Dirty changes",
+        "liveBranch": "Live branch",
+        "leftUntouched": "left untouched",
+        "rescueBranch": "Rescue branch",
+        "restoreTo": "Restore to",
+        "recordedBranch": "recorded branch",
+        "repairing": "Repairing…",
+        "quarantineAndRestore": "Quarantine changes & restore branch",
+        "heldByReissueInstead": "Held by {{label}} — re-issue on an isolated workspace instead.",
+        "baseRef": "Base ref",
+        "recorded": "Recorded",
+        "ancestry": "Ancestry"
+      },
+      "ancestry": {
+        "forwardOnly": "Forward-only",
+        "diverged": "Diverged",
+        "unknown": "Ancestry unknown"
+      },
+      "runLabel": "run {{id}}",
+      "options": {
+        "tryAgain": "Try again",
+        "tryAgainDescription": "Dismiss recovery and return the source task to todo.",
+        "markTaskDone": "Mark task done",
+        "markTaskDoneDescription": "Restore by recording the requested work as complete.",
+        "sendForReview": "Send for review",
+        "sendForReviewDescription": "Hand off to a reviewer with a real review path.",
+        "falsePositiveDone": "False positive, done",
+        "falsePositiveDoneDescription": "Dismiss recovery and mark the source task complete.",
+        "falsePositiveReview": "False positive, review",
+        "falsePositiveReviewDescription": "Dismiss recovery and send the source task for review."
+      }
     }
   }
 }

@@ -727,7 +727,10 @@
       "restoreTasks": "Restaurar {{count}} tarefas",
       "resumeWork": "Retomar trabalho",
       "resumeSubtree": "Retomar subárvore",
-      "pauseWorkEllipsis": "Pausar trabalho..."
+      "pauseWorkEllipsis": "Pausar trabalho...",
+      "archiveFromInbox": "Arquivar da caixa de entrada",
+      "backToInbox": "Voltar para a caixa de entrada",
+      "copyAsMarkdown": "Copiar como markdown"
     },
     "composer": {
       "wakeAssigneeWhilePaused": "Enviar este comentário vai acordar {{name}} para triagem enquanto a subárvore permanece pausada.",
@@ -820,7 +823,11 @@
       "insertedInline": "Inserido em linha",
       "attachedToTask": "Anexado à tarefa",
       "noRunOutputYet": "Ainda não há saída da execução.",
-      "emptyConversation": "A conversa desta tarefa está vazia. Comece com uma mensagem abaixo."
+      "emptyConversation": "A conversa desta tarefa está vazia. Comece com uma mensagem abaixo.",
+      "deleteCommentDialog": {
+        "title": "Excluir comentário?",
+        "description": "Isso substituirá o comentário por um marcador de comentário excluído."
+      }
     },
     "toasts": {
       "taskUpdateFailed": "Falha ao atualizar a tarefa",
@@ -878,6 +885,264 @@
       "noExecutionWorkspaceToReconcile": "Esta tarefa não tem workspace de execução para reconciliar.",
       "repairFailed": "Falha ao reparar",
       "noExecutionWorkspaceToRepair": "Esta tarefa não tem workspace de execução para reparar."
+    },
+    "systemNotice": {
+      "defaults": {
+        "notice": "Aviso do sistema",
+        "warning": "Aviso do sistema",
+        "alert": "Alerta do sistema"
+      },
+      "actions": {
+        "hideDetails": "Ocultar detalhes",
+        "details": "Detalhes"
+      },
+      "labels": {
+        "missingIssueDisposition": "Disposição da issue ausente",
+        "missingDispositionRecoveryBlocked": "Recuperação bloqueada por disposição ausente",
+        "missingDisposition": "Disposição ausente"
+      },
+      "sections": {
+        "requiredAction": "Ação obrigatória",
+        "runEvidence": "Evidência da execução"
+      },
+      "rows": {
+        "sourceIssue": "Issue de origem",
+        "assignee": "Responsável",
+        "recoveryOwner": "Responsável pela recuperação",
+        "recoveryAction": "Ação de recuperação",
+        "sourceAssignee": "Responsável de origem",
+        "suggestedAction": "Ação sugerida",
+        "validDispositions": "Disposições válidas",
+        "successfulRun": "Execução bem-sucedida",
+        "sourceRun": "Execução de origem",
+        "correctiveHandoffRun": "Execução corretiva de handoff",
+        "runStatus": "Status da execução",
+        "latestIssueStatus": "Status mais recente da issue",
+        "latestHandoffRunStatus": "Status mais recente da execução de handoff",
+        "normalizedCause": "Causa normalizada",
+        "detectedProgress": "Progresso detectado",
+        "automaticRetry": "Nova tentativa automática"
+      },
+      "messages": {
+        "needsDisposition": "O Paperclip precisa de uma disposição antes que esta issue possa continuar.",
+        "recoveryBlocked": "O Paperclip não conseguiu resolver automaticamente a disposição ausente desta issue. A issue está bloqueada em um responsável pela recuperação.",
+        "detectedProgressNoActionEvidence": "A execução produziu saída útil, mas sem evidência concreta de ação",
+        "chooseValidDispositionWithoutTranscript": "escolha e registre uma disposição válida da issue sem copiar o conteúdo da transcrição"
+      },
+      "status": {
+        "succeeded": "concluída",
+        "failed": "falhou",
+        "running": "executando",
+        "queued": "na fila",
+        "inProgress": "em andamento"
+      }
+    },
+    "blockedNotice": {
+      "linkedTask": "a tarefa vinculada",
+      "linkedTasks": "as tarefas vinculadas",
+      "verbs": {
+        "itIs": "ela for",
+        "theyAre": "elas forem"
+      },
+      "retryNow": {
+        "dueNow": "vence agora",
+        "scheduled": "agendado",
+        "scheduledWithEta": "agendado para {{eta}}",
+        "description": "O Paperclip pedirá ao responsável para escolher o próximo passo {{schedule}}. Tentar agora inicia esse acompanhamento imediatamente.",
+        "retrying": "Tentando novamente...",
+        "alreadyPromoted": "Já promovido",
+        "promoted": "Promovido",
+        "retryNow": "Tentar agora"
+      },
+      "liveWork": {
+        "statusTitle": "status {{status}}",
+        "running": "executando",
+        "task": "tarefa",
+        "tasks": "tarefas",
+        "title": "Aguardando trabalho em execução",
+        "description": "Na fila atrás de {{total}} {{noun}} sendo trabalhadas em ordem. Esta tarefa retoma automaticamente quando a cadeia terminar. Comentários ainda notificam o responsável.",
+        "progressDone": "{{done}} de {{total}} concluídas",
+        "progressRunning": "{{count}} em execução",
+        "progressAria": "Progresso da cadeia de bloqueios",
+        "stepStatus": {
+          "done": "concluída",
+          "running": "executando",
+          "queued": "na fila"
+        },
+        "thisTaskResumes": "Esta tarefa — retoma automaticamente quando a cadeia terminar",
+        "nowRunning": "Executando agora",
+        "blockedByParkedWork": "Bloqueada por trabalho estacionado"
+      },
+      "nextStep": {
+        "title": "Esta tarefa ainda precisa de um próximo passo.",
+        "description": "Uma execução terminou com sucesso, mas a tarefa ainda está aberta. O Paperclip precisa que alguém escolha o que acontece a seguir.",
+        "items": {
+          "doneOrCancelled": "Marque como concluída ou cancelada.",
+          "reviewOrInput": "Envie para revisão ou peça mais informações.",
+          "recordBlocker": "Registre o que está bloqueando e quem é dono desse bloqueio.",
+          "delegateOrContinue": "Delegue trabalho de acompanhamento ou enfileire uma continuação."
+        },
+        "askedAssignee": "Foi pedido a {{name}} que escolha o próximo passo",
+        "detectedProgress": "Progresso detectado: {{summary}}"
+      },
+      "messages": {
+        "stalledMultiple": "O trabalho nesta tarefa está bloqueado por {{blockerLabel}}, mas a cadeia está parada em revisão sem um próximo passo claro. Resolva as revisões paradas abaixo ou remova-as como bloqueios.",
+        "stalledSingle": "O trabalho nesta tarefa está bloqueado por {{blockerLabel}}, mas a cadeia está parada em revisão sem um próximo passo claro. Resolva a revisão parada abaixo ou remova-a como bloqueio.",
+        "reopenSuppressed": "Uma mensagem ainda não reiniciará esta tarefa — ela continua bloqueada por {{blockerLabel}} até que {{verb}} concluída, então será reaberta automaticamente. Comentários ainda notificam {{responsibleName}} para perguntas ou triagem enquanto isso.",
+        "blockedUntilComplete": "O trabalho nesta tarefa está bloqueado por {{blockerLabel}} até que {{verb}} concluída. Comentários ainda notificam o responsável para perguntas ou triagem.",
+        "blockedUntilTodo": "O trabalho nesta tarefa está bloqueado até que alguém a mova de volta para A fazer. Comentários ainda notificam o responsável para perguntas ou triagem.",
+        "stillBlockedBy": "Ainda bloqueada por",
+        "andOtherTasks_one": "e mais {{count}} outra tarefa",
+        "andOtherTasks_other": "e mais {{count}} outras tarefas",
+        "stalledInReview": "Parada em revisão",
+        "ultimatelyWaitingOn": "No fim, aguardando"
+      }
+    },
+    "recoveryCard": {
+      "kindLabels": {
+        "missingDisposition": "Disposição ausente",
+        "strandedTask": "Tarefa encalhada",
+        "workspaceValidation": "Validação do workspace",
+        "configurationValidation": "Validação de configuração",
+        "activeWatchdog": "Watchdog ativo",
+        "taskNeedsNextStep": "Tarefa precisa de próximo passo"
+      },
+      "headlines": {
+        "missingDisposition": "A execução desta tarefa terminou, mas nenhum próximo passo foi escolhido. Escolha o que acontece a seguir — tente a tarefa novamente, marque como concluída ou envie para revisão.",
+        "strandedTask": "O Paperclip tentou novamente a última execução desta tarefa, mas ainda não existe execução enfileirada, revisor, bloqueio ou outro próximo responsável. Para fazê-la andar, escolha o que acontece a seguir — tente a tarefa novamente, marque como concluída ou envie para revisão.",
+        "workspaceValidation": "O Paperclip interrompeu esta execução porque o workspace Git da tarefa não pôde ser validado.",
+        "configurationValidation": "O Paperclip interrompeu antes de despachar esta execução porque faltam vínculos obrigatórios de secrets/env.",
+        "activeWatchdog": "A execução ativa ficou silenciosa. A recuperação está observando sem interrompê-la.",
+        "taskNeedsNextStep": "O Paperclip não conseguiu encontrar um próximo passo claro para esta tarefa aberta. Escolha se deve continuar o trabalho, enviar para revisão, marcar como concluída ou registrar o que está bloqueando."
+      },
+      "stateLabels": {
+        "needed": "RECUPERAÇÃO NECESSÁRIA",
+        "inProgress": "RECUPERAÇÃO EM ANDAMENTO",
+        "observeOnly": "OBSERVANDO EXECUÇÃO ATIVA",
+        "escalated": "RECUPERAÇÃO ESCALADA",
+        "resolved": "RECUPERAÇÃO RESOLVIDA"
+      },
+      "outcomes": {
+        "restored": "restaurada",
+        "handedBack": "devolvida ao dono original",
+        "ownerCompleted": "concluída pelo responsável pela recuperação",
+        "delegated": "delegada para acompanhamento",
+        "falsePositive": "falso positivo",
+        "blocked": "bloqueada",
+        "escalated": "escalada",
+        "cancelled": "cancelada"
+      },
+      "aria": {
+        "needed": "necessária",
+        "inProgress": "em andamento",
+        "observeOnly": "observando execução ativa",
+        "escalated": "escalada",
+        "resolved": "resolvida",
+        "recoveryAction": "Ação de recuperação: {{state}}"
+      },
+      "followUp": {
+        "wakeOwner": "Será pedido a um agente que escolha o próximo passo",
+        "boardEscalation": "O board decidirá",
+        "manual": "Acompanhamento manual necessário",
+        "manualRepairRequired": "Reparo necessário antes de tentar novamente",
+        "monitor": "Verificação agendada",
+        "monitorWithInterval": "Verificação agendada · {{interval}}"
+      },
+      "metadata": {
+        "owner": "Responsável",
+        "recovery": "Recuperação:",
+        "board": "Board",
+        "system": "Sistema",
+        "unassignedPickOne": "sem responsável — escolha alguém para acordá-lo",
+        "returnsTo": "Retorna para:",
+        "sourceRun": "Execução de origem",
+        "correctiveRun": "Execução corretiva",
+        "evidence": "Evidência",
+        "nextAction": "Próxima ação",
+        "followUp": "Acompanhamento",
+        "attempt": "tentativa {{count}} de {{max}}",
+        "timesOut": "Expira {{time}}",
+        "soon": "em breve",
+        "resolution": "Resolução"
+      },
+      "resolution": {
+        "resolvedAs": "Resolvida como {{outcome}}",
+        "resolvedAsSentence": "Recuperação resolvida como {{outcome}}."
+      },
+      "actions": {
+        "resolveRecovery": "Resolver recuperação",
+        "resolve": "Resolver…",
+        "reconcileForward": "Reconciliar para frente e continuar",
+        "reissueOnIsolatedWorkspace": "Reemitir em workspace isolado",
+        "recommended": "Recomendado",
+        "reissueDescription": "Cria uma cópia nova desta tarefa em um worktree Git isolado baseado no branch ativo. Seu workspace atual e seus commits permanecem intocados.",
+        "creating": "Criando…",
+        "createIsolatedReissue": "Criar reemissão isolada"
+      },
+      "footer": {
+        "observing": "A recuperação está observando sem interromper a execução ativa.",
+        "staysOpen": "O card permanece aberto até que uma decisão explícita seja registrada."
+      },
+      "workspace": {
+        "divergenceDiagnosis": "Diagnóstico da divergência",
+        "expectedRecorded": "Esperado · registrado",
+        "liveCheckedOut": "Ativo · checkout atual",
+        "worktreeClaimedBy": "Worktree reivindicado por",
+        "activeRun": "(execução ativa)",
+        "claimHeld": "(reivindicação mantida)",
+        "losslessRepairBlocked": "o reparo sem perda não pode ser executado enquanto outro workspace mantiver o branch ativo.",
+        "verifiedReconcileAnyway": "Verifiquei isso — reconciliar mesmo assim",
+        "breakGlassTitle": "Reconciliação break-glass",
+        "breakGlassDescription": {
+          "before": "Isto ignora a verificação de segurança do Paperclip e aponta o workspace registrado para o branch ativo",
+          "highlight": "sem prova de ancestralidade",
+          "after": "Confirme a divergência abaixo e registre o motivo antes de continuar."
+        },
+        "recordedExpected": "Registrado · esperado",
+        "detached": "destacado",
+        "ancestryVerdict": "Veredito de ancestralidade",
+        "reason": "Motivo",
+        "reasonRequired": "obrigatório — registrado no log de auditoria",
+        "reasonPlaceholder": "ex.: Verifiquei que o branch ativo contém apenas os commits de acompanhamento pretendidos; é seguro adotá-lo.",
+        "reconciling": "Reconciliando…",
+        "reconcileAnyway": "Reconciliar mesmo assim (break-glass)",
+        "uncommittedChanges": "Alterações não commitadas",
+        "uncommittedChangesCount_one": "{{count}} alteração não commitada",
+        "uncommittedChangesCount_other": "{{count}} alterações não commitadas",
+        "repairWorkspaceAction": "Reparar workspace — quarentenar alterações e restaurar branch",
+        "repairWorkspace": "Reparar workspace",
+        "repairDescription": "Isto não perde dados — nenhum motivo é necessário. Suas alterações não commitadas são commitadas em um novo branch de resgate, depois o branch registrado é restaurado para que a tarefa possa retomar. O branch ativo permanece exatamente como está.",
+        "dirtyChanges": "Alterações locais",
+        "liveBranch": "Branch ativo",
+        "leftUntouched": "deixado intacto",
+        "rescueBranch": "Branch de resgate",
+        "restoreTo": "Restaurar para",
+        "recordedBranch": "branch registrado",
+        "repairing": "Reparando…",
+        "quarantineAndRestore": "Quarentenar alterações e restaurar branch",
+        "heldByReissueInstead": "Mantido por {{label}} — reemita em um workspace isolado no lugar.",
+        "baseRef": "Ref base",
+        "recorded": "Registrado",
+        "ancestry": "Ancestralidade"
+      },
+      "ancestry": {
+        "forwardOnly": "Somente para frente",
+        "diverged": "Divergiu",
+        "unknown": "Ancestralidade desconhecida"
+      },
+      "runLabel": "execução {{id}}",
+      "options": {
+        "tryAgain": "Tentar novamente",
+        "tryAgainDescription": "Descarta a recuperação e devolve a tarefa de origem para A fazer.",
+        "markTaskDone": "Marcar tarefa como concluída",
+        "markTaskDoneDescription": "Restaura registrando o trabalho solicitado como concluído.",
+        "sendForReview": "Enviar para revisão",
+        "sendForReviewDescription": "Entrega para um revisor com um caminho real de revisão.",
+        "falsePositiveDone": "Falso positivo, concluída",
+        "falsePositiveDoneDescription": "Descarta a recuperação e marca a tarefa de origem como concluída.",
+        "falsePositiveReview": "Falso positivo, revisão",
+        "falsePositiveReviewDescription": "Descarta a recuperação e envia a tarefa de origem para revisão."
+      }
     }
   }
 }

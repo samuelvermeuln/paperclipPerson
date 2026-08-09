@@ -8,6 +8,7 @@ import {
   TriangleAlert,
   type LucideIcon,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 
 export type SystemNoticeTone = "neutral" | "info" | "success" | "warning" | "danger";
@@ -111,17 +112,61 @@ function formatTimestamp(ts: string) {
   }
 }
 
+function translateSystemNoticeText(t: ReturnType<typeof useTranslation>["t"], text: string): string {
+  const keyMap: Record<string, string> = {
+    "System notice": "issueDetailPage.systemNotice.defaults.notice",
+    "System warning": "issueDetailPage.systemNotice.defaults.warning",
+    "System alert": "issueDetailPage.systemNotice.defaults.alert",
+    "Hide details": "issueDetailPage.systemNotice.actions.hideDetails",
+    "Details": "issueDetailPage.systemNotice.actions.details",
+    "Missing issue disposition": "issueDetailPage.systemNotice.labels.missingIssueDisposition",
+    "Missing disposition recovery blocked": "issueDetailPage.systemNotice.labels.missingDispositionRecoveryBlocked",
+    "Missing disposition": "issueDetailPage.systemNotice.labels.missingDisposition",
+    "Required action": "issueDetailPage.systemNotice.sections.requiredAction",
+    "Run evidence": "issueDetailPage.systemNotice.sections.runEvidence",
+    "Source issue": "issueDetailPage.systemNotice.rows.sourceIssue",
+    "Assignee": "issueDetailPage.systemNotice.rows.assignee",
+    "Recovery owner": "issueDetailPage.systemNotice.rows.recoveryOwner",
+    "Recovery action": "issueDetailPage.systemNotice.rows.recoveryAction",
+    "Source assignee": "issueDetailPage.systemNotice.rows.sourceAssignee",
+    "Suggested action": "issueDetailPage.systemNotice.rows.suggestedAction",
+    "Valid dispositions": "issueDetailPage.systemNotice.rows.validDispositions",
+    "Successful run": "issueDetailPage.systemNotice.rows.successfulRun",
+    "Source run": "issueDetailPage.systemNotice.rows.sourceRun",
+    "Corrective handoff run": "issueDetailPage.systemNotice.rows.correctiveHandoffRun",
+    "Run status": "issueDetailPage.systemNotice.rows.runStatus",
+    "Latest issue status": "issueDetailPage.systemNotice.rows.latestIssueStatus",
+    "Latest handoff run status": "issueDetailPage.systemNotice.rows.latestHandoffRunStatus",
+    "Normalized cause": "issueDetailPage.systemNotice.rows.normalizedCause",
+    "Detected progress": "issueDetailPage.systemNotice.rows.detectedProgress",
+    "Automatic retry": "issueDetailPage.systemNotice.rows.automaticRetry",
+    "Paperclip needs a disposition before this issue can continue.": "issueDetailPage.systemNotice.messages.needsDisposition",
+    "Paperclip could not resolve this issue's missing disposition automatically. The issue is blocked on a recovery owner.": "issueDetailPage.systemNotice.messages.recoveryBlocked",
+    "Run produced useful output but no concrete action evidence": "issueDetailPage.systemNotice.messages.detectedProgressNoActionEvidence",
+    "choose and record a valid issue disposition without copying transcript content": "issueDetailPage.systemNotice.messages.chooseValidDispositionWithoutTranscript",
+    "succeeded": "issueDetailPage.systemNotice.status.succeeded",
+    "failed": "issueDetailPage.systemNotice.status.failed",
+    "running": "issueDetailPage.systemNotice.status.running",
+    "queued": "issueDetailPage.systemNotice.status.queued",
+    "in_progress": "issueDetailPage.systemNotice.status.inProgress"
+  };
+  const key = keyMap[text];
+  return key ? t(key) : text;
+}
+
 function MetadataRow({ row, tone }: { row: SystemNoticeMetadataRow; tone: ToneTokens }) {
+  const { t } = useTranslation();
+  const translatedLabel = translateSystemNoticeText(t, row.label);
   return (
     <div className="grid grid-cols-(--gtc-8) gap-x-3 gap-y-0.5 px-3 py-1.5 text-xs">
       <div className="truncate text-(length:--text-micro) font-medium uppercase tracking-(--tracking-label) text-muted-foreground">
-        {row.label}
+        {translatedLabel}
       </div>
       <div className="min-w-0 break-words text-foreground/90">
         {(() => {
           switch (row.kind) {
             case "text":
-              return <span>{row.value}</span>;
+              return <span>{translateSystemNoticeText(t, row.value)}</span>;
             case "code":
               return (
                 <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-(length:--text-micro) text-foreground/80">
@@ -133,7 +178,7 @@ function MetadataRow({ row, tone }: { row: SystemNoticeMetadataRow; tone: ToneTo
                 <>
                   <span>{row.identifier}</span>
                   {row.title ? (
-                    <span className="text-muted-foreground">— {row.title}</span>
+                    <span className="text-muted-foreground">— {translateSystemNoticeText(t, row.title)}</span>
                   ) : null}
                 </>
               );
@@ -179,7 +224,7 @@ function MetadataRow({ row, tone }: { row: SystemNoticeMetadataRow; tone: ToneTo
                 <>
                   <code className="rounded bg-muted px-1.5 py-0.5 text-foreground/80">{runShort}</code>
                   {row.status ? (
-                    <span className={cn("font-sans", tone.label)}>{row.status}</span>
+                    <span className={cn("font-sans", tone.label)}>{translateSystemNoticeText(t, row.status)}</span>
                   ) : null}
                 </>
               );
@@ -216,20 +261,24 @@ export function SystemNotice({
   timestamp,
   className,
 }: SystemNoticeProps) {
+  const { t } = useTranslation();
   const tokens = TONE_TOKENS[tone];
   const ToneIcon = tokens.icon;
   const [open, setOpen] = useState(detailsDefaultOpen);
   const detailsId = useId();
   const hasDetails = Boolean(metadata && metadata.length > 0);
-  const resolvedLabel =
+  const resolvedLabel = translateSystemNoticeText(
+    t,
     label ??
-    {
-      neutral: "System notice",
-      info: "System notice",
-      success: "System notice",
-      warning: "System warning",
-      danger: "System alert",
-    }[tone];
+      {
+        neutral: "System notice",
+        info: "System notice",
+        success: "System notice",
+        warning: "System warning",
+        danger: "System alert",
+      }[tone],
+  );
+  const resolvedBody = typeof body === "string" ? translateSystemNoticeText(t, body) : body;
 
   return (
     <section
@@ -280,7 +329,7 @@ export function SystemNotice({
               </>
             ) : null}
           </div>
-          <div className="mt-1 break-words text-sm leading-6 text-foreground">{body}</div>
+          <div className="mt-1 break-words text-sm leading-6 text-foreground">{resolvedBody}</div>
         </div>
         {hasDetails ? (
           <button
@@ -294,7 +343,7 @@ export function SystemNotice({
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
             )}
           >
-            <span>{open ? "Hide details" : "Details"}</span>
+            <span>{open ? t("issueDetailPage.systemNotice.actions.hideDetails") : t("issueDetailPage.systemNotice.actions.details")}</span>
             <ChevronDown
               className={cn(
                 "h-3.5 w-3.5 transition-transform duration-150",
@@ -317,7 +366,7 @@ export function SystemNotice({
               <div key={sectionIdx} className="py-1.5 first:pt-2 last:pb-2">
                 {section.title ? (
                   <div className="px-3 pb-1 pt-0.5 text-(length:--text-nano) font-semibold uppercase tracking-(--tracking-caps) text-muted-foreground">
-                    {section.title}
+                    {translateSystemNoticeText(t, section.title)}
                   </div>
                 ) : null}
                 <div>

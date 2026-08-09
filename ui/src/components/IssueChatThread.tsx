@@ -1492,7 +1492,7 @@ function IssueChatUserMessage({
         <SourceTrustBadge sourceTrust={sourceTrust} artifactLabel="comment" />
         {followUpRequested ? (
           <Badge variant="outline" className="text-(length:--text-nano) uppercase tracking-(--tracking-eyebrow)">
-            Follow-up
+            {translate("issueDetailPage.recoveryCard.metadata.followUp")}
           </Badge>
         ) : null}
       </div>
@@ -1637,17 +1637,17 @@ function IssueChatUserMessage({
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete comment?</DialogTitle>
+            <DialogTitle>{translate("issueDetailPage.chat.deleteCommentDialog.title")}</DialogTitle>
             <DialogDescription>
-              This will replace the comment with a deleted-comment marker.
+              {translate("issueDetailPage.chat.deleteCommentDialog.description")}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
-              Cancel
+              {translate("common.actions.cancel")}
             </Button>
             <Button variant="destructive" onClick={confirmDeleteComment}>
-              Delete comment
+              {translate("issueDetailPage.chat.deleteComment")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1882,7 +1882,7 @@ function IssueChatAssistantMessage({
             <SourceTrustBadge sourceTrust={sourceTrust} artifactLabel="comment" />
             {followUpRequested ? (
               <Badge variant="outline" className="text-(length:--text-nano) uppercase tracking-(--tracking-eyebrow)">
-                Follow-up
+                {translate("issueDetailPage.recoveryCard.metadata.followUp")}
               </Badge>
             ) : null}
           </div>
@@ -1952,7 +1952,7 @@ function IssueChatAssistantMessage({
               <SourceTrustBadge sourceTrust={sourceTrust} artifactLabel="comment" />
               {followUpRequested ? (
                 <Badge variant="outline" className="text-(length:--text-nano) uppercase tracking-(--tracking-eyebrow)">
-                  Follow-up
+                  {translate("issueDetailPage.recoveryCard.metadata.followUp")}
                 </Badge>
               ) : null}
               {isRunning ? (
