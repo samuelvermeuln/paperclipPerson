@@ -719,7 +719,9 @@
     },
     "messages": {
       "tryAgain": "Tente novamente.",
-      "copyFailed": "Falha ao copiar"
+      "copyFailed": "Falha ao copiar",
+      "unknownError": "Erro desconhecido",
+      "feedbackSaveFailed": "Falha ao salvar feedback"
     },
     "controls": {
       "pauseWork": "Pausar trabalho",
@@ -730,7 +732,11 @@
       "pauseWorkEllipsis": "Pausar trabalho...",
       "archiveFromInbox": "Arquivar da caixa de entrada",
       "backToInbox": "Voltar para a caixa de entrada",
-      "copyAsMarkdown": "Copiar como markdown"
+      "copyAsMarkdown": "Copiar como markdown",
+      "pausing": "Pausando...",
+      "pauseSubtreeEllipsis": "Pausar subárvore...",
+      "cancelSubtreeEllipsis": "Cancelar subárvore...",
+      "restoreSubtreeEllipsis": "Restaurar subárvore..."
     },
     "composer": {
       "wakeAssigneeWhilePaused": "Enviar este comentário vai acordar {{name}} para triagem enquanto a subárvore permanece pausada.",
@@ -1142,6 +1148,277 @@
         "falsePositiveDoneDescription": "Descarta a recuperação e marca a tarefa de origem como concluída.",
         "falsePositiveReview": "Falso positivo, revisão",
         "falsePositiveReviewDescription": "Descarta a recuperação e envia a tarefa de origem para revisão."
+      }
+    },
+    "actions": {
+      "hideTask": "Ocultar esta tarefa",
+      "properties": "Propriedades"
+    },
+    "placeholders": {
+      "addDescription": "Adicione uma descrição..."
+    },
+    "actorIdentity": {
+      "system": "Sistema",
+      "board": "Board",
+      "unknown": "Desconhecido"
+    },
+    "attribution": {
+      "accessibleLabel": "{{label}}: {{name}}",
+      "accessibleLabelWithVia": "{{label}}: {{name}} · via {{via}}",
+      "via": "via {{via}}",
+      "user": "Usuário",
+      "taskPeople": "Pessoas da tarefa",
+      "assignee": "Responsável",
+      "originating": "Origem"
+    },
+    "badges": {
+      "live": "Ao vivo",
+      "routine": "Rotina",
+      "routineExecutionTitle": "Execução de rotina da rotina {{id}}",
+      "noProject": "Sem projeto",
+      "productivityReviewTitle": "Esta tarefa é uma revisão de produtividade.",
+      "productivityReview": "Revisão de produtividade",
+      "watchdogTitle": "Esta tarefa é uma tarefa de watchdog gerada. Ela verifica se o trabalho interrompido na árvore monitorada é legítimo.",
+      "watchdog": "Watchdog",
+      "workModeTitle": "Esta tarefa está em {{mode}}.",
+      "blockedByParkedWorkTitle": "Bloqueada por trabalho estacionado — pelo menos um bloqueador atribuído está em backlog e não acordará seu responsável.",
+      "blockedByParkedWork": "Bloqueada por trabalho estacionado"
+    },
+    "treeControls": {
+      "subtree": {
+        "pause": "Pausar subárvore",
+        "resume": "Retomar subárvore",
+        "cancel": "Cancelar subárvore",
+        "restore": "Restaurar subárvore"
+      },
+      "leaf": {
+        "pause": "Pausar trabalho",
+        "resume": "Retomar trabalho"
+      },
+      "help": {
+        "subtree": {
+          "pause": "Pausa a execução ativa nesta subárvore até uma retomada explícita.",
+          "resume": "Libera a pausa ativa da subárvore para que o trabalho retido possa continuar.",
+          "cancel": "Cancela tarefas não terminais desta subárvore e interrompe trabalhos enfileirados/em execução quando possível.",
+          "restore": "Restaura tarefas canceladas por esta operação de subárvore para que o trabalho possa continuar."
+        },
+        "leaf": {
+          "pause": "Pausa a execução ativa desta tarefa até uma retomada explícita.",
+          "resume": "Libera a pausa ativa para que esta tarefa possa continuar."
+        }
+      },
+      "previewErrors": {
+        "boardOnly": "Apenas usuários do board podem pré-visualizar controles de subárvore.",
+        "stalePreview": "A prévia está desatualizada porque o estado de retenção da subárvore mudou. Tente novamente para atualizar.",
+        "invalidAction": "Esta ação de subárvore está inválida no momento para as tarefas selecionadas.",
+        "unableToLoad": "Não foi possível carregar a prévia."
+      }
+    },
+    "assignedBacklogNotice": {
+      "theAssignee": "o responsável",
+      "parked": "Estacionada",
+      "description": "{{name}} não será solicitado a trabalhar nisto até que o status mude para A fazer ou Em andamento.",
+      "commentsStillNotify": "Comentários ainda notificam o responsável para dúvidas ou triagem. Deixe isto estacionado apenas se o trabalho estiver intencionalmente em espera.",
+      "resuming": "Retomando…",
+      "resumeNow": "Retomar agora"
+    },
+    "continuationHandoff": {
+      "title": "Handoff de continuação",
+      "collapse": "Recolher handoff de continuação",
+      "expand": "Expandir handoff de continuação",
+      "badge": "handoff",
+      "updated": "Atualizado {{time}}",
+      "revision": " - revisão {{number}}",
+      "copied": "Copiado",
+      "copy": "Copiar"
+    },
+    "workspaceCard": {
+      "options": {
+        "projectDefault": "Padrão do projeto",
+        "newIsolatedWorkspace": "Novo workspace isolado",
+        "reuseExistingWorkspace": "Reutilizar workspace existente",
+        "existingIsolatedWorkspace": "Workspace isolado existente"
+      },
+      "copy": {
+        "copiedTitle": "Copiado!",
+        "copyTitle": "Copiar",
+        "copiedAria": "Copiado para a área de transferência",
+        "copyAria": "Copiar {{label}}",
+        "value": "valor"
+      },
+      "modes": {
+        "isolatedWorkspace": "Workspace isolado",
+        "operatorBranch": "Branch do operador",
+        "cloudSandbox": "Sandbox em nuvem",
+        "adapterManaged": "Gerenciado pelo adaptador",
+        "workspace": "Workspace"
+      },
+      "actions": {
+        "cancel": "Cancelar",
+        "save": "Salvar",
+        "edit": "Editar",
+        "viewWorkspaceDetails": "Ver detalhes do workspace →",
+        "browseFiles": "Navegar arquivos…",
+        "openFileByPath": "Abrir arquivo por caminho…"
+      },
+      "labels": {
+        "repo": "Repositório:",
+        "environment": "Ambiente:",
+        "reusing": "Reutilizando:",
+        "current": "Atual:"
+      },
+      "environmentSuffix": {
+        "reusedWorkspace": " · workspace reutilizado",
+        "projectDefault": " · padrão do projeto"
+      },
+      "descriptions": {
+        "freshIsolatedWorkspace": "Um novo workspace isolado será criado quando esta tarefa for executada.",
+        "reuseExistingWorkspace": "Esta tarefa reutilizará um workspace existente quando for executada.",
+        "projectDefaultWorkspace": "Esta tarefa usará a configuração de workspace padrão do projeto quando for executada."
+      },
+      "status": {
+        "active": "ativo",
+        "idle": "ocioso",
+        "inReview": "em revisão",
+        "archived": "arquivado"
+      }
+    },
+    "runLedger": {
+      "ariaLabel": "Razão de execuções da tarefa",
+      "title": "Razão de execuções",
+      "waitingForFirstRunRecord": "Aguardando o primeiro registro de execução.",
+      "noRunsLinkedYet": "Ainda não há execuções vinculadas.",
+      "latestRun": "Última execução",
+      "childWork": "Trabalho filho",
+      "run": "Execução",
+      "onBehalfOf": "em nome de",
+      "actingOnBehalfOf": "Atuando em nome de {{name}}",
+      "live": "ao vivo",
+      "exhausted": "Esgotado",
+      "continuationAttempt": "Tentativa de continuação {{count}}",
+      "unknown": "desconhecido",
+      "olderItemsNotShown": "{{count}} itens mais antigos não exibidos",
+      "summary": {
+        "runningNowBy": "Executando agora por {{name}}",
+        "queuedFor": "Na fila para {{name}}",
+        "automaticRetryScheduledFor": "Nova tentativa automática agendada para {{name}}",
+        "statusBy": "{{status}} por {{name}}"
+      },
+      "liveness": {
+        "completed": {
+          "label": "Concluída",
+          "description": "A tarefa chegou a um estado terminal."
+        },
+        "advanced": {
+          "label": "Avançou",
+          "description": "A execução produziu evidência concreta de progresso."
+        },
+        "planOnly": {
+          "label": "Só plano",
+          "description": "A execução descreveu trabalho futuro sem evidência concreta de ação."
+        },
+        "emptyResponse": {
+          "label": "Resposta vazia",
+          "description": "A execução terminou sem saída útil."
+        },
+        "blocked": {
+          "label": "Bloqueada",
+          "description": "A execução ou a tarefa declarou um bloqueio."
+        },
+        "failed": {
+          "label": "Falhou",
+          "description": "A execução terminou sem sucesso."
+        },
+        "needsFollowUp": {
+          "label": "Precisa de acompanhamento",
+          "description": "A execução produziu saída útil, mas não comprovou progresso concreto."
+        },
+        "pending": {
+          "label": "Checagens após terminar",
+          "description": "A vivacidade é avaliada após a execução terminar."
+        },
+        "retryPending": {
+          "label": "Nova tentativa pendente",
+          "description": "O Paperclip enfileirou uma nova tentativa automática que ainda não começou."
+        },
+        "missing": {
+          "label": "Sem dados de vivacidade",
+          "description": "Esta execução não tem classificação de vivacidade persistida."
+        }
+      },
+      "outputSilence": {
+        "suspicious": "Monitor de silêncio",
+        "critical": "Execução estagnada",
+        "snoozed": "Silêncio adiado"
+      },
+      "stopReason": {
+        "timeoutWithValue": "tempo esgotado ({{value}})",
+        "timeout": "tempo esgotado",
+        "maxTurnsExhausted": "máximo de turnos esgotado",
+        "budgetPaused": "pausado por orçamento",
+        "cancelled": "cancelado",
+        "pausedByBoard": "pausado pelo board",
+        "processLost": "processo perdido",
+        "unmanagedBackgroundTaskStopped": "tarefa em segundo plano não gerenciada interrompida",
+        "adapterFailed": "falha no adaptador",
+        "completedWithValue": "concluída ({{value}})",
+        "completed": "concluída"
+      },
+      "stopStatus": {
+        "retryPending": "Nova tentativa pendente",
+        "waitingToStart": "Aguardando para iniciar",
+        "stillRunning": "Ainda em execução",
+        "unavailable": "Indisponível",
+        "noStopReason": "Sem motivo de parada"
+      },
+      "lastUsefulAction": {
+        "waitingForNextAttempt": "Aguardando a próxima tentativa",
+        "noActionRecordedYet": "Nenhuma ação registrada ainda",
+        "noConcreteAction": "Nenhuma ação concreta",
+        "noUsefulOutput": "Nenhuma saída útil",
+        "unavailable": "Indisponível",
+        "noneRecorded": "Nada registrado"
+      },
+      "watchdog": {
+        "staleRunAlert": "Alerta de watchdog de execução estagnada",
+        "outputSilenceWarning": "Aviso de watchdog de silêncio de saída",
+        "anExtendedPeriod": "um período prolongado",
+        "forRecoveryContext": " para contexto de recuperação.",
+        "continueMonitoring": "Continuar monitorando",
+        "snoozeOneHour": "Adiar 1h",
+        "markFalsePositive": "Marcar falso positivo",
+        "reasons": {
+          "snoozedFromLedger": "Adiado a partir da razão de execuções da issue",
+          "dismissedFromLedger": "Dispensado a partir da razão de execuções da issue"
+        },
+        "errors": {
+          "boardOrRecoveryOwnerOnly": "Apenas o board ou o responsável de recuperação atribuído pode registrar decisões do watchdog",
+          "couldNotRecordDecision": "O Paperclip não conseguiu registrar a decisão do watchdog."
+        },
+        "toasts": {
+          "decisionNotRecorded": "Decisão do watchdog não registrada"
+        }
+      },
+      "emptyState": {
+        "runsAndActivity": "Execuções e atividades aparecerão aqui quando esta tarefa tiver histórico.",
+        "historicalRuns": "Execuções históricas sem metadados de vivacidade aparecerão aqui quando forem vinculadas a esta tarefa."
+      },
+      "fields": {
+        "elapsed": "Tempo decorrido",
+        "lastUsefulAction": "Última ação útil",
+        "stop": "Parada",
+        "nextAction": "Próxima ação: "
+      },
+      "profile": {
+        "cheapFallbackToPrimary": "O perfil cheap recuou para o primário",
+        "unavailable": "perfil {{profile}} indisponível",
+        "label": "Perfil: {{requested}}",
+        "labelWithApplied": "Perfil: {{requested}} → {{applied}}",
+        "labelUnavailable": "Perfil: {{requested}} (indisponível)",
+        "requested": "Solicitado: {{requested}}",
+        "applied": "Aplicado: {{applied}}",
+        "source": "Origem: {{source}}",
+        "fallback": "Fallback: {{fallback}}"
       }
     }
   }

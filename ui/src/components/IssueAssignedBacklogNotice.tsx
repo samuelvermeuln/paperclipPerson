@@ -1,4 +1,5 @@
 import { Flag } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type { Agent } from "@paperclipai/shared";
 import { Button } from "@/components/ui/button";
 
@@ -17,10 +18,11 @@ export function IssueAssignedBacklogNotice({
   onResume,
   resuming,
 }: IssueAssignedBacklogNoticeProps) {
+  const { t } = useTranslation();
   if (issueStatus !== "backlog") return null;
   if (!assigneeAgent && !assigneeUserId) return null;
 
-  const assigneeLabel = assigneeAgent?.name ?? "the assignee";
+  const assigneeLabel = assigneeAgent?.name ?? t("issueDetailPage.assignedBacklogNotice.theAssignee");
 
   return (
     <div
@@ -32,12 +34,12 @@ export function IssueAssignedBacklogNotice({
         <Flag className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-300" />
         <div className="min-w-0 flex-1 space-y-1.5">
           <p className="leading-5">
-            <span className="font-medium">Parked</span> —{" "}
-            <span className="font-medium">{assigneeLabel}</span> will not be asked to work on this until status changes to To do or In progress.
+            <span className="font-medium">{t("issueDetailPage.assignedBacklogNotice.parked")}</span>{" — "}
+            {t("issueDetailPage.assignedBacklogNotice.description", { name: assigneeLabel })}
           </p>
           {assigneeAgent ? (
             <p className="text-xs leading-5 text-amber-800 dark:text-amber-200">
-              Comments still notify the assignee for questions or triage. Leave this parked only if the work is intentionally on hold.
+              {t("issueDetailPage.assignedBacklogNotice.commentsStillNotify")}
             </p>
           ) : null}
           {onResume ? (
@@ -50,7 +52,7 @@ export function IssueAssignedBacklogNotice({
                 disabled={resuming}
                 data-testid="issue-assigned-backlog-resume"
               >
-                {resuming ? "Resuming…" : "Resume now"}
+                {resuming ? t("issueDetailPage.assignedBacklogNotice.resuming") : t("issueDetailPage.assignedBacklogNotice.resumeNow")}
               </Button>
             </div>
           ) : null}

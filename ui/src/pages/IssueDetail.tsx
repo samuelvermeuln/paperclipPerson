@@ -80,7 +80,7 @@ import {
 } from "../lib/optimistic-issue-comments";
 import { clearIssueExecutionRun, removeLiveRunById, upsertInterruptedRun } from "../lib/optimistic-issue-runs";
 import { useProjectOrder } from "../hooks/useProjectOrder";
-import { useTranslation } from "@/i18n";
+import { t as translate, useTranslation } from "@/i18n";
 import { relativeTime, cn, formatDurationMs, formatTokens, visibleRunCostUsd } from "../lib/utils";
 import { liveBlueBadge } from "../lib/status-colors";
 import { ApprovalCard } from "../components/ApprovalCard";
@@ -258,45 +258,47 @@ type IssueDetailComment = (IssueComment | OptimisticIssueComment) & {
 const FEEDBACK_TERMS_URL = import.meta.env.VITE_FEEDBACK_TERMS_URL?.trim() || "https://paperclip.ing/tos";
 const ISSUE_COMMENT_AUTOLOAD_LIMIT = ISSUE_COMMENT_PAGE_SIZE * 3;
 const JUMP_TO_LATEST_MAX_COMMENT_PAGES = 10;
-const TREE_CONTROL_MODE_LABEL: Record<IssueTreeControlMode, string> = {
-  pause: "Pause subtree",
-  resume: "Resume subtree",
-  cancel: "Cancel subtree",
-  restore: "Restore subtree",
+const TREE_CONTROL_MODE_LABEL_KEY: Record<IssueTreeControlMode, string> = {
+  pause: "issueDetailPage.treeControls.subtree.pause",
+  resume: "issueDetailPage.treeControls.subtree.resume",
+  cancel: "issueDetailPage.treeControls.subtree.cancel",
+  restore: "issueDetailPage.treeControls.subtree.restore",
 };
-const LEAF_WORK_CONTROL_MODE_LABEL: Partial<Record<IssueTreeControlMode, string>> = {
-  pause: "Pause work",
-  resume: "Resume work",
+const LEAF_WORK_CONTROL_MODE_LABEL_KEY: Partial<Record<IssueTreeControlMode, string>> = {
+  pause: "issueDetailPage.treeControls.leaf.pause",
+  resume: "issueDetailPage.treeControls.leaf.resume",
 };
-const TREE_CONTROL_MODE_HELP_TEXT: Record<IssueTreeControlMode, string> = {
-  pause: "Pause active execution in this task subtree until an explicit resume.",
-  resume: "Release the active subtree pause hold so held work can continue.",
-  cancel: "Cancel non-terminal tasks in this subtree and stop queued/running work where possible.",
-  restore: "Restore tasks cancelled by this subtree operation so work can resume.",
+const TREE_CONTROL_MODE_HELP_TEXT_KEY: Record<IssueTreeControlMode, string> = {
+  pause: "issueDetailPage.treeControls.help.subtree.pause",
+  resume: "issueDetailPage.treeControls.help.subtree.resume",
+  cancel: "issueDetailPage.treeControls.help.subtree.cancel",
+  restore: "issueDetailPage.treeControls.help.subtree.restore",
 };
-const LEAF_WORK_CONTROL_MODE_HELP_TEXT: Partial<Record<IssueTreeControlMode, string>> = {
-  pause: "Pause active execution on this task until an explicit resume.",
-  resume: "Release the active pause hold so this task can continue.",
+const LEAF_WORK_CONTROL_MODE_HELP_TEXT_KEY: Partial<Record<IssueTreeControlMode, string>> = {
+  pause: "issueDetailPage.treeControls.help.leaf.pause",
+  resume: "issueDetailPage.treeControls.help.leaf.resume",
 };
 function issueTreeControlLabel(mode: IssueTreeControlMode, scope: "leaf" | "subtree") {
-  return scope === "leaf"
-    ? LEAF_WORK_CONTROL_MODE_LABEL[mode] ?? TREE_CONTROL_MODE_LABEL[mode]
-    : TREE_CONTROL_MODE_LABEL[mode];
+  const key = scope === "leaf"
+    ? LEAF_WORK_CONTROL_MODE_LABEL_KEY[mode] ?? TREE_CONTROL_MODE_LABEL_KEY[mode]
+    : TREE_CONTROL_MODE_LABEL_KEY[mode];
+  return translate(key);
 }
 
 function issueTreeControlHelpText(mode: IssueTreeControlMode, scope: "leaf" | "subtree") {
-  return scope === "leaf"
-    ? LEAF_WORK_CONTROL_MODE_HELP_TEXT[mode] ?? TREE_CONTROL_MODE_HELP_TEXT[mode]
-    : TREE_CONTROL_MODE_HELP_TEXT[mode];
+  const key = scope === "leaf"
+    ? LEAF_WORK_CONTROL_MODE_HELP_TEXT_KEY[mode] ?? TREE_CONTROL_MODE_HELP_TEXT_KEY[mode]
+    : TREE_CONTROL_MODE_HELP_TEXT_KEY[mode];
+  return translate(key);
 }
 
 function treeControlPreviewErrorCopy(error: unknown): string {
   if (error instanceof ApiError) {
-    if (error.status === 403) return "Only board users can preview subtree controls.";
-    if (error.status === 409) return "Preview is stale because subtree hold state changed. Retry to refresh.";
-    if (error.status === 422) return "This subtree action is currently invalid for the selected tasks.";
+    if (error.status === 403) return translate("issueDetailPage.treeControls.previewErrors.boardOnly");
+    if (error.status === 409) return translate("issueDetailPage.treeControls.previewErrors.stalePreview");
+    if (error.status === 422) return translate("issueDetailPage.treeControls.previewErrors.invalidAction");
   }
-  return error instanceof Error ? error.message : "Unable to load preview.";
+  return error instanceof Error ? error.message : translate("issueDetailPage.treeControls.previewErrors.unableToLoad");
 }
 
 export function canBoardResolveRecoveryAction(
@@ -501,12 +503,12 @@ function ActorIdentity({ evt, agentMap, userProfileMap }: { evt: ActivityEvent; 
     const agent = agentMap.get(id);
     return <Identity name={agent?.name ?? id.slice(0, 8)} size="sm" />;
   }
-  if (evt.actorType === "system") return <Identity name="System" size="sm" />;
+  if (evt.actorType === "system") return <Identity name={translate("issueDetailPage.actorIdentity.system")} size="sm" />;
   if (evt.actorType === "user") {
     const profile = userProfileMap?.get(id);
-    return <Identity name={profile?.label ?? "Board"} avatarUrl={profile?.image} size="sm" />;
+    return <Identity name={profile?.label ?? translate("issueDetailPage.actorIdentity.board")} avatarUrl={profile?.image} size="sm" />;
   }
-  return <Identity name={id || "Unknown"} size="sm" />;
+  return <Identity name={id || translate("issueDetailPage.actorIdentity.unknown")} size="sm" />;
 }
 
 export type AttributionActor = {
@@ -524,15 +526,18 @@ function attributionInitials(name: string): string {
 
 function AttributionAvatar({
   label,
+  testIdLabel,
   actor,
   via,
 }: {
-  label: "Assignee" | "Originating";
+  label: string;
+  testIdLabel: "assignee" | "originating";
   actor: AttributionActor;
   via?: string | null;
 }) {
-  const accessibleLabel = via ? `${label}: ${actor.name} · via ${via}` : `${label}: ${actor.name}`;
-  const testIdLabel = label.toLowerCase();
+  const accessibleLabel = via
+    ? translate("issueDetailPage.attribution.accessibleLabelWithVia", { label, name: actor.name, via })
+    : translate("issueDetailPage.attribution.accessibleLabel", { label, name: actor.name });
 
   return (
     <Tooltip>
@@ -564,7 +569,7 @@ function AttributionAvatar({
             <div className="text-(length:--text-nano) font-medium uppercase leading-none text-background/70">{label}</div>
             <div className="max-w-48 truncate text-xs font-medium leading-4 text-background">{actor.name}</div>
             {via ? (
-              <div className="max-w-48 truncate text-(length:--text-nano) leading-3 text-background/60">via {via}</div>
+              <div className="max-w-48 truncate text-(length:--text-nano) leading-3 text-background/60">{translate("issueDetailPage.attribution.via", { via })}</div>
             ) : null}
           </div>
         </div>
@@ -596,7 +601,7 @@ function IssueAttributionByline({
           id: issue.assigneeUserId,
           name: formatUserLabel(issue.assigneeUserId, userLabelMap)
             ?? userProfileMap.get(issue.assigneeUserId)?.label
-            ?? "User",
+            ?? translate("issueDetailPage.attribution.user"),
           avatarUrl: userProfileMap.get(issue.assigneeUserId)?.image ?? null,
         }
       : null;
@@ -613,7 +618,7 @@ function IssueAttributionByline({
           id: originatingActor.id,
           name: formatUserLabel(originatingActor.id, userLabelMap)
             ?? userProfileMap.get(originatingActor.id)?.label
-            ?? "User",
+            ?? translate("issueDetailPage.attribution.user"),
           avatarUrl: userProfileMap.get(originatingActor.id)?.image ?? null,
         }
     : null;
@@ -625,9 +630,9 @@ function IssueAttributionByline({
 
   return (
     <TooltipProvider>
-      <AvatarGroup className="-space-x-1.5" aria-label="Task people" data-testid="issue-attribution-avatar-stack">
-        {assignee ? <AttributionAvatar label="Assignee" actor={assignee} /> : null}
-        {originator ? <AttributionAvatar label="Originating" actor={originator} via={originatorVia} /> : null}
+      <AvatarGroup className="-space-x-1.5" aria-label={translate("issueDetailPage.attribution.taskPeople")} data-testid="issue-attribution-avatar-stack">
+        {assignee ? <AttributionAvatar label={translate("issueDetailPage.attribution.assignee")} testIdLabel="assignee" actor={assignee} /> : null}
+        {originator ? <AttributionAvatar label={translate("issueDetailPage.attribution.originating")} testIdLabel="originating" actor={originator} via={originatorVia} /> : null}
       </AvatarGroup>
     </TooltipProvider>
   );
@@ -713,10 +718,10 @@ function IssueDetailLoadingState({
               {headerSeed.originKind === "routine_execution" && headerSeed.originId ? (
                 <Badge variant="outline"
                   className="border-violet-500/30 bg-violet-500/10 text-(length:--text-nano) text-violet-600 dark:text-violet-400"
-                  title={`Routine execution from routine ${headerSeed.originId}`}
+                  title={translate("issueDetailPage.badges.routineExecutionTitle", { id: headerSeed.originId })}
                 >
                   <Repeat className="h-3 w-3" />
-                  Routine
+                  {translate("issueDetailPage.badges.routine")}
                 </Badge>
               ) : null}
               {/* Seeded header — same anatomy as the resolved one below, so the
@@ -731,7 +736,7 @@ function IssueDetailLoadingState({
               ) : (
                 <span className="inline-flex items-center gap-1 text-xs text-muted-foreground opacity-50 px-1 -mx-1 py-0.5">
                   <ProjectTile size="xs" />
-                  No project
+                  {translate("issueDetailPage.badges.noProject")}
                 </span>
               )}
             </>
@@ -853,7 +858,7 @@ function InboxMobileToolbar({
               onClick={() => { onProperties(); setMenuOpen(false); }}
             >
               <SlidersHorizontal className="h-3 w-3" />
-              Properties
+              {t("issueDetailPage.actions.properties")}
             </button>
             {issueIdProp && (
               <button
@@ -861,7 +866,7 @@ function InboxMobileToolbar({
                 onClick={() => { onHide(); setMenuOpen(false); }}
               >
                 <EyeOff className="h-3 w-3" />
-                Hide this task
+                {t("issueDetailPage.actions.hideTask")}
               </button>
             )}
           </PopoverContent>
@@ -1285,7 +1290,7 @@ const IssueDetailChatTab = memo(function IssueDetailChatTab({
         stoppingRunId={pausingWorkRunId}
         onStopRun={onPauseWorkRun}
         stopRunLabel={t("issueDetailPage.controls.pauseWork")}
-        stoppingRunLabel="Pausing..."
+        stoppingRunLabel={t("issueDetailPage.controls.pausing")}
         stopRunVariant="pause"
         runFinalizationActions={runFinalizationActions}
         onAcceptInteraction={onAcceptInteraction}
@@ -3085,8 +3090,8 @@ export function IssueDetail() {
         queryClient.setQueryData(queryKeys.issues.feedbackVotes(issueId!), context.previousVotes);
       }
       pushToast({
-        title: "Failed to save feedback",
-        body: err instanceof Error ? err.message : "Unknown error",
+        title: t("issueDetailPage.messages.feedbackSaveFailed"),
+        body: err instanceof Error ? err.message : t("issueDetailPage.messages.unknownError"),
         tone: "error",
       });
     },
@@ -4186,7 +4191,7 @@ export function IssueDetail() {
                 <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
                 <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-blue-500" />
               </span>
-              Live
+              {t("issueDetailPage.badges.live")}
             </Badge>
           )}
 
@@ -4194,10 +4199,10 @@ export function IssueDetail() {
             <Link
               to={`/routines/${issue.originId}`}
               className="inline-flex items-center gap-1 rounded-full bg-violet-500/10 border border-violet-500/30 px-2 py-0.5 text-(length:--text-nano) font-medium text-violet-600 dark:text-violet-400 shrink-0 hover:bg-violet-500/20 transition-colors"
-              title={`Routine execution from routine ${issue.originId}`}
+              title={t("issueDetailPage.badges.routineExecutionTitle", { id: issue.originId })}
             >
               <Repeat className="h-3 w-3" />
-              Routine
+              {t("issueDetailPage.badges.routine")}
             </Link>
           )}
 
@@ -4208,20 +4213,20 @@ export function IssueDetail() {
           {issue.originKind === "issue_productivity_review" ? (
             <Badge variant="outline"
               className="border-amber-500/40 bg-amber-500/10 text-(length:--text-nano) text-amber-700 dark:text-amber-300"
-              title="This task is a productivity review."
+              title={t("issueDetailPage.badges.productivityReviewTitle")}
             >
               <Eye className="h-3 w-3" />
-              Productivity review
+              {t("issueDetailPage.badges.productivityReview")}
             </Badge>
           ) : null}
 
           {issue.originKind === "task_watchdog" ? (
             <Badge variant="outline"
               className="border-sky-500/40 bg-sky-500/10 text-(length:--text-nano) text-sky-700 dark:text-sky-300"
-              title="This task is a generated watchdog task. It verifies whether stopped work in the watched task tree is legitimate."
+              title={t("issueDetailPage.badges.watchdogTitle")}
             >
               <ScanEye className="h-3 w-3" />
-              Watchdog
+              {t("issueDetailPage.badges.watchdog")}
             </Badge>
           ) : null}
 
@@ -4235,7 +4240,7 @@ export function IssueDetail() {
             return (
               <Badge variant="outline"
                 className={cn("text-(length:--text-nano)", workModeMeta.classes.badge)}
-                title={`This task is in ${workModeMeta.label.toLowerCase()}.`}
+                title={t("issueDetailPage.badges.workModeTitle", { mode: workModeMeta.label.toLowerCase() })}
               >
                 <WorkModeIcon className="h-3 w-3" aria-hidden />
                 {workModeMeta.label}
@@ -4247,10 +4252,10 @@ export function IssueDetail() {
             <Badge variant="outline"
               data-testid="issue-detail-parked-blocker"
               className="border-amber-500/60 bg-amber-500/15 text-(length:--text-nano) text-amber-700 dark:text-amber-300"
-              title="Blocked by parked work — at least one assigned blocker is in backlog and will not wake its assignee."
+              title={t("issueDetailPage.badges.blockedByParkedWorkTitle")}
             >
               <Flag className="h-3 w-3" />
-              Blocked by parked work
+              {t("issueDetailPage.badges.blockedByParkedWork")}
             </Badge>
           ) : null}
 
@@ -4272,7 +4277,7 @@ export function IssueDetail() {
           ) : (
             <span className="inline-flex items-center gap-1 text-xs text-muted-foreground opacity-50 px-1 -mx-1 py-0.5">
               <ProjectTile size="xs" />
-              No project
+              {t("issueDetailPage.badges.noProject")}
             </span>
           )}
 
@@ -4318,7 +4323,7 @@ export function IssueDetail() {
                 variant="ghost"
                 size="icon-xs"
                 onClick={() => setMobilePropsOpen(true)}
-                title="Properties"
+                title={t("issueDetailPage.actions.properties")}
               >
                 <SlidersHorizontal className="h-4 w-4" />
               </Button>
@@ -4431,7 +4436,7 @@ export function IssueDetail() {
                     }}
                   >
                     <PauseCircle className="h-3 w-3" />
-                    Pause subtree...
+                    {t("issueDetailPage.controls.pauseSubtreeEllipsis")}
                   </button>
                   {canResumeSubtree ? (
                     <button
@@ -4457,7 +4462,7 @@ export function IssueDetail() {
                     }}
                   >
                     <XCircle className="h-3 w-3" />
-                    Cancel subtree...
+                    {t("issueDetailPage.controls.cancelSubtreeEllipsis")}
                   </button>
                   {canRestoreSubtree ? (
                     <button
@@ -4471,7 +4476,7 @@ export function IssueDetail() {
                       }}
                     >
                       <Repeat className="h-3 w-3" />
-                      Restore subtree...
+                      {t("issueDetailPage.controls.restoreSubtreeEllipsis")}
                     </button>
                   ) : null}
                 </>
@@ -4487,7 +4492,7 @@ export function IssueDetail() {
                 }}
               >
                 <EyeOff className="h-3 w-3" />
-                Hide this task
+                {t("issueDetailPage.actions.hideTask")}
               </button>
             </PopoverContent>
             </Popover>
@@ -4517,7 +4522,7 @@ export function IssueDetail() {
             onSave={(description) => updateIssue.mutateAsync({ description })}
             as="p"
             className="text-sm leading-7 text-foreground"
-            placeholder="Add a description..."
+            placeholder={t("issueDetailPage.placeholders.addDescription")}
             multiline
             foldable
             mentions={mentionOptions}
@@ -4665,7 +4670,7 @@ export function IssueDetail() {
                         setTreeControlOpen(true);
                       }}
                     >
-                      Cancel subtree...
+                      {t("issueDetailPage.controls.cancelSubtreeEllipsis")}
                     </Button>
                   ) : null}
                 </div>
@@ -5236,7 +5241,7 @@ export function IssueDetail() {
       <Sheet open={mobilePropsOpen} onOpenChange={setMobilePropsOpen}>
         <SheetContent side="bottom" className="max-h-(--sz-85dvh) pb-(--sz-safe-bottom)">
           <SheetHeader>
-            <SheetTitle className="text-sm">Properties</SheetTitle>
+            <SheetTitle className="text-sm">{t("issueDetailPage.actions.properties")}</SheetTitle>
           </SheetHeader>
           <ScrollArea className="flex-1 overflow-y-auto">
             <div className="px-4 pb-4">

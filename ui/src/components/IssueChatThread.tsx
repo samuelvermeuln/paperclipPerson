@@ -2595,6 +2595,14 @@ const COMPACT_TONE_DOT: Record<SystemNoticeTone, string> = {
   danger: "bg-red-500 dark:bg-red-400",
 };
 
+function translateSystemNoticeBodyText(bodyText: string) {
+  const key = ({
+    "Paperclip needs a disposition before this issue can continue.": "issueDetailPage.systemNotice.messages.needsDisposition",
+    "Paperclip could not resolve this issue's missing disposition automatically. The issue is blocked on a recovery owner.": "issueDetailPage.systemNotice.messages.recoveryBlocked",
+  } as const)[bodyText.trim()];
+  return key ? translate(key) : bodyText;
+}
+
 // A system notice whose presentation opts into `density: "compact"` collapses to
 // a single quiet row — tone dot + title (+ author) + timestamp + chevron.
 // Expanding reveals the full SystemNotice card (body + details), so no
@@ -2705,12 +2713,14 @@ function SystemNoticeCommentRow({
     return undefined;
   })();
 
+  const renderedBodyText = translateSystemNoticeBodyText(bodyText);
+
   const props = buildSystemNoticeProps({
     presentation,
     metadata: commentMetadata,
     body: (
       <MarkdownBody className="text-sm leading-6" softBreaks onImageClick={onImageClick}>
-        {bodyText}
+        {renderedBodyText}
       </MarkdownBody>
     ),
     timestamp: message.createdAt ? new Date(message.createdAt).toISOString() : undefined,
