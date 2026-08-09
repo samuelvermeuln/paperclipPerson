@@ -23,14 +23,6 @@ function resolveInitialLocale(): SupportedLocale {
   if (typeof window !== "undefined") {
     const stored = normalizeLocale(window.localStorage.getItem(LOCALE_STORAGE_KEY));
     if (stored) return stored;
-
-    const browserLocales = Array.isArray(window.navigator.languages)
-      ? window.navigator.languages
-      : [window.navigator.language];
-    for (const locale of browserLocales) {
-      const normalized = normalizeLocale(locale);
-      if (normalized) return normalized;
-    }
   }
 
   return DEFAULT_LOCALE;

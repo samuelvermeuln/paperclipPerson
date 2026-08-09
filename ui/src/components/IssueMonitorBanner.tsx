@@ -1,7 +1,9 @@
 import { useMemo } from "react";
 import { Clock } from "lucide-react";
+import type { TFunction } from "i18next";
 import type { Issue } from "@paperclipai/shared";
 
+import { useTranslation } from "@/i18n";
 import { Button } from "@/components/ui/button";
 import { InlineBanner } from "@/components/InlineBanner";
 import { cn } from "@/lib/utils";
@@ -111,13 +113,79 @@ export function buildMonitorSurfaceCopy(
   };
 }
 
+function buildLocalizedMonitorSurfaceCopy(
+  derived: DerivedMonitorState,
+  now: MonitorDate,
+  t: TFunction,
+): MonitorSurfaceCopy | null {
+  if (!isWaitingMonitorState(derived.state) || !derived.nextCheckAt) return null;
+
+  const eta = formatMonitorEta(derived.nextCheckAt, now);
+  const absolute = formatMonitorAbsolute(derived.nextCheckAt, {}, now);
+  const isScheduledRetryOnly = derived.source === "scheduled-retry";
+
+  let bannerTitle: string;
+  let stripTitle: string;
+  let statusHint: string | null = null;
+  switch (derived.state) {
+    case "scheduled":
+    case "retrying":
+      bannerTitle = isScheduledRetryOnly
+        ? t("issueDetailPage.monitor.agentResumes", { eta })
+        : t("issueDetailPage.monitor.waitingOnMonitorResumes", { eta });
+      stripTitle = t("issueDetailPage.monitor.resumes", { eta });
+      break;
+    case "due-now":
+      bannerTitle = isScheduledRetryOnly
+        ? t("issueDetailPage.monitor.agentRetryDueNow")
+        : t("issueDetailPage.monitor.waitingOnMonitorDueNow");
+      stripTitle = t("issueDetailPage.monitor.dueNow");
+      statusHint = t("issueDetailPage.monitor.checkingMomentarily");
+      break;
+    case "overdue":
+    default:
+      bannerTitle = isScheduledRetryOnly
+        ? t("issueDetailPage.monitor.agentRetryEta", { eta })
+        : t("issueDetailPage.monitor.waitingOnMonitorEta", { eta });
+      stripTitle = capitalize(eta);
+      statusHint = t("issueDetailPage.monitor.firesOnNextTick");
+      break;
+  }
+
+  const attemptLabel = derived.attemptCount >= 1
+    ? t("issueDetailPage.monitor.attempt", { count: derived.attemptCount })
+    : null;
+  const serviceLabel = derived.serviceName
+    ? t("issueDetailPage.monitor.watching", { service: derived.serviceName })
+    : null;
+
+  const bannerMeta = [
+    statusHint,
+    t("issueDetailPage.monitor.yourTime", { absolute }),
+    attemptLabel,
+    serviceLabel,
+  ].filter((piece): piece is string => Boolean(piece));
+  const stripMeta = [statusHint, absolute, attemptLabel, serviceLabel].filter(
+    (piece): piece is string => Boolean(piece),
+  );
+
+  return {
+    bannerTitle,
+    stripTitle,
+    bannerMeta,
+    stripMeta,
+    tone: derived.state === "overdue" ? "warning" : "info",
+  };
+}
+
 function useMonitorSurfaceCopy(issue: Issue): MonitorSurfaceCopy | null {
+  const { t } = useTranslation();
   // `nextCheckAt` is stable for a given issue; derive once to seed the ticking
   // countdown cadence, then re-derive against the live clock so the surfaces
   // roll scheduled → due → overdue on their own.
   const nextCheckAt = useMemo(() => deriveMonitorState(issue).nextCheckAt, [issue]);
   const now = useMonitorCountdown(nextCheckAt);
-  return useMemo(() => buildMonitorSurfaceCopy(deriveMonitorState(issue, now), now), [issue, now]);
+  return useMemo(() => buildLocalizedMonitorSurfaceCopy(deriveMonitorState(issue, now), now, t), [issue, now, t]);
 }
 
 function CheckNowButton({
@@ -127,6 +195,7 @@ function CheckNowButton({
   onCheckNow: () => void;
   checkingNow: boolean;
 }) {
+  const { t } = useTranslation();
   return (
     <Button
       type="button"
@@ -136,7 +205,7 @@ function CheckNowButton({
       onClick={onCheckNow}
       disabled={checkingNow}
     >
-      {checkingNow ? "Checking…" : "Check now"}
+      {checkingNow ? t("issueDetailPage.monitor.checking") : t("issueDetailPage.monitor.checkNow")}
     </Button>
   );
 }
@@ -184,6 +253,7 @@ export function IssueMonitorComposerStrip({
   checkingNow = false,
   className,
 }: IssueMonitorSurfaceProps & { className?: string }) {
+  const { t } = useTranslation();
   const copy = useMonitorSurfaceCopy(issue);
   if (!copy) return null;
 
@@ -204,7 +274,7 @@ export function IssueMonitorComposerStrip({
         {onCheckNow ? <CheckNowButton onCheckNow={onCheckNow} checkingNow={checkingNow} /> : null}
       </div>
       <p className="mt-1.5 text-xs text-muted-foreground">
-        Sending a reply wakes the agent now — before the scheduled check.
+        {t("issueDetailPage.monitor.replyWakesAgentNow")}
       </p>
     </div>
   );

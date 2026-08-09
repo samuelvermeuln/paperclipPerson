@@ -80,6 +80,7 @@ import {
 } from "../lib/optimistic-issue-comments";
 import { clearIssueExecutionRun, removeLiveRunById, upsertInterruptedRun } from "../lib/optimistic-issue-runs";
 import { useProjectOrder } from "../hooks/useProjectOrder";
+import { useTranslation } from "@/i18n";
 import { relativeTime, cn, formatDurationMs, formatTokens, visibleRunCostUsd } from "../lib/utils";
 import { liveBlueBadge } from "../lib/status-colors";
 import { ApprovalCard } from "../components/ApprovalCard";
@@ -1050,6 +1051,7 @@ const IssueDetailChatTab = memo(function IssueDetailChatTab({
   externalReferences,
   linkCaseReferences,
 }: IssueDetailChatTabProps) {
+  const { t } = useTranslation();
   // Seam for the Task Chat Redesign (flag: enableTaskChatRedesign). Flag OFF
   // renders IssueChatThread verbatim — the flag-off branch is provably today's
   // UI. Both components share one prop type, so no cast is needed.
@@ -1203,7 +1205,7 @@ const IssueDetailChatTab = memo(function IssueDetailChatTab({
         disabled={commentsLoadingOlder}
         onClick={onLoadOlderComments}
       >
-        {commentsLoadingOlder ? "Loading earlier comments..." : "Load earlier comments"}
+        {commentsLoadingOlder ? t("issueDetailPage.thread.loadingEarlierComments") : t("issueDetailPage.thread.loadEarlierComments")}
       </Button>
     </div>
   ) : null;
@@ -1281,7 +1283,7 @@ const IssueDetailChatTab = memo(function IssueDetailChatTab({
         interruptingQueuedRunId={interruptingQueuedRunId}
         stoppingRunId={pausingWorkRunId}
         onStopRun={onPauseWorkRun}
-        stopRunLabel="Pause work"
+        stopRunLabel={t("issueDetailPage.controls.pauseWork")}
         stoppingRunLabel="Pausing..."
         stopRunVariant="pause"
         runFinalizationActions={runFinalizationActions}
@@ -1344,6 +1346,7 @@ function IssueDetailActivityTab({
   handoffFocusSignal = 0,
   externalReferences,
 }: IssueDetailActivityTabProps) {
+  const { t } = useTranslation();
   const { data: activity, isLoading: activityLoading } = useQuery({
     queryKey: queryKeys.issues.activity(issueId),
     queryFn: () => activityApi.forIssue(issueId),
@@ -1455,13 +1458,13 @@ function IssueDetailActivityTab({
     <>
       {shouldShowCostSummary && (
         <div className="mb-3 px-3 py-2 rounded-lg border border-border">
-          <div className="text-sm font-medium text-muted-foreground mb-1">Cost Summary</div>
+          <div className="text-sm font-medium text-muted-foreground mb-1">{t("issueDetailPage.costSummary.title")}</div>
           {!issueCostSummary.hasCost && !issueCostSummary.hasTokens && !hasIssueTreeCost ? (
-            <div className="text-xs text-muted-foreground">No cost data yet.</div>
+            <div className="text-xs text-muted-foreground">{t("issueDetailPage.costSummary.noCostDataYet")}</div>
           ) : (
             <div className="space-y-1 text-xs text-muted-foreground tabular-nums">
               <div className="flex flex-wrap gap-3">
-                <span className="font-medium text-foreground">This task</span>
+                <span className="font-medium text-foreground">{t("issueDetailPage.costSummary.thisTask")}</span>
                 {issueCostSummary.hasCost ? (
                   <span className="font-medium text-foreground">
                     ${issueCostSummary.cost.toFixed(4)}
@@ -1482,7 +1485,7 @@ function IssueDetailActivityTab({
                   </span>
                 ) : null}
                 {!issueCostSummary.hasCost && !issueCostSummary.hasTokens && !issueCostSummary.hasRuntime ? (
-                  <span>No direct cost data.</span>
+                  <span>{t("issueDetailPage.costSummary.noDirectCostData")}</span>
                 ) : null}
               </div>
               {hasIssueTreeCost && issueTreeCostSummary ? (
@@ -1577,6 +1580,7 @@ function IssueDetailActivityTab({
 }
 
 export function IssueDetail() {
+  const { t } = useTranslation();
   const { issueId } = useParams<{ issueId: string }>();
   const { selectedCompanyId } = useCompany();
   // Task Chat Redesign (flag: enableTaskChatRedesign): with the flag ON the
@@ -2211,8 +2215,8 @@ export function IssueDetail() {
         queryClient.setQueryData(queryKeys.issues.list(context.selectedCompanyId), context.previousList);
       }
       pushToast({
-        title: "Task update failed",
-        body: err instanceof Error ? err.message : "Unable to save task changes",
+        title: t("issueDetailPage.toasts.taskUpdateFailed"),
+        body: err instanceof Error ? err.message : t("issueDetailPage.toasts.unableToSaveTaskChanges"),
         tone: "error",
       });
     },
@@ -2239,8 +2243,8 @@ export function IssueDetail() {
     },
     onError: (err) => {
       pushToast({
-        title: "Recovery resolution failed",
-        body: err instanceof Error ? err.message : "Unable to resolve recovery action",
+        title: t("issueDetailPage.toasts.recoveryResolutionFailed"),
+        body: err instanceof Error ? err.message : t("issueDetailPage.toasts.unableToResolveRecoveryAction"),
         tone: "error",
       });
     },
@@ -2284,19 +2288,19 @@ export function IssueDetail() {
       const cancelCount = result.preview?.totals.activeRuns ?? 0;
       pushToast({
         title: result.kind === "release"
-          ? treeControlScope === "leaf" ? "Work resumed" : "Subtree resumed"
+          ? treeControlScope === "leaf" ? t("issueDetailPage.toasts.workResumed") : t("issueDetailPage.toasts.subtreeResumed")
           : result.hold.mode === "pause"
-            ? treeControlScope === "leaf" ? "Work paused" : "Subtree paused"
-            : `${modeLabel} applied`,
+            ? treeControlScope === "leaf" ? t("issueDetailPage.toasts.workPaused") : t("issueDetailPage.toasts.subtreePaused")
+            : t("issueDetailPage.toasts.subtreeControlAppliedTitle", { label: modeLabel }),
         body: result.kind === "release"
-          ? (result.hold.releaseReason?.trim() || (treeControlScope === "leaf" ? "Active task pause released." : "Active subtree pause released."))
+          ? (result.hold.releaseReason?.trim() || (treeControlScope === "leaf" ? t("issueDetailPage.toasts.activeTaskPauseReleased") : t("issueDetailPage.toasts.activeSubtreePauseReleased")))
           : result.hold.mode === "pause"
             ? treeControlScope === "leaf"
-              ? `Work paused. ${cancelCount} run${cancelCount === 1 ? "" : "s"} cancelled.`
-              : `Subtree paused. ${cancelCount} run${cancelCount === 1 ? "" : "s"} cancelled.`
+              ? t("issueDetailPage.toasts.workPausedRunsCancelled", { count: cancelCount })
+              : t("issueDetailPage.toasts.subtreePausedRunsCancelled", { count: cancelCount })
             : result.hold.reason?.trim()
               ? result.hold.reason
-              : "Subtree control applied.",
+              : t("issueDetailPage.toasts.subtreeControlAppliedBody"),
       });
       setTreeControlOpen(false);
       setTreeControlReason("");
@@ -2326,8 +2330,8 @@ export function IssueDetail() {
     },
     onError: (err) => {
       pushToast({
-        title: "Unable to apply subtree control",
-        body: err instanceof Error ? err.message : "Please try again.",
+        title: t("issueDetailPage.toasts.unableToApplySubtreeControl"),
+        body: err instanceof Error ? err.message : t("issueDetailPage.messages.tryAgain"),
         tone: "error",
       });
     },
@@ -2345,10 +2349,10 @@ export function IssueDetail() {
     onSuccess: async (result) => {
       const cancelCount = result.preview?.totals.activeRuns ?? 0;
       pushToast({
-        title: "Work paused",
+        title: t("issueDetailPage.toasts.workPaused"),
         body: cancelCount > 0
-          ? `Work paused. ${cancelCount} run${cancelCount === 1 ? "" : "s"} cancelled.`
-          : "Work paused. This task is held until resume.",
+          ? t("issueDetailPage.toasts.workPausedRunsCancelled", { count: cancelCount })
+          : t("issueDetailPage.toasts.workPausedHeldUntilResume"),
         tone: "success",
       });
       await Promise.all([
@@ -2365,8 +2369,8 @@ export function IssueDetail() {
     },
     onError: (err) => {
       pushToast({
-        title: "Unable to pause work",
-        body: err instanceof Error ? err.message : "Please try again.",
+        title: t("issueDetailPage.toasts.unableToPauseWork"),
+        body: err instanceof Error ? err.message : t("issueDetailPage.messages.tryAgain"),
         tone: "error",
       });
     },
@@ -2388,7 +2392,7 @@ export function IssueDetail() {
       invalidateIssueRunState();
       invalidateIssueCollections();
       pushToast({
-        title: status === "done" ? "Run stopped and task done" : "Run stopped and task cancelled",
+        title: status === "done" ? t("issueDetailPage.toasts.runStoppedAndTaskDone") : t("issueDetailPage.toasts.runStoppedAndTaskCancelled"),
         tone: "success",
       });
     },
@@ -2396,9 +2400,9 @@ export function IssueDetail() {
       const runWasStopped = didRunCancelBeforeStatusUpdateFail(err);
       pushToast({
         title: runWasStopped
-          ? "Run stopped; task update failed"
-          : status === "done" ? "Stop and done failed" : "Stop and cancel failed",
-        body: err instanceof Error ? err.message : "Unable to stop the run and update the task",
+          ? t("issueDetailPage.toasts.runStoppedTaskUpdateFailed")
+          : status === "done" ? t("issueDetailPage.toasts.stopAndDoneFailed") : t("issueDetailPage.toasts.stopAndCancelFailed"),
+        body: err instanceof Error ? err.message : t("issueDetailPage.toasts.unableToStopRunAndUpdateTask"),
         tone: "error",
       });
     },
@@ -2424,8 +2428,8 @@ export function IssueDetail() {
     },
     onError: (err) => {
       pushToast({
-        title: "Task update failed",
-        body: err instanceof Error ? err.message : "Unable to save sub-task changes",
+        title: t("issueDetailPage.toasts.taskUpdateFailed"),
+        body: err instanceof Error ? err.message : t("issueDetailPage.toasts.unableToSaveSubtaskChanges"),
         tone: "error",
       });
     },
@@ -2441,14 +2445,14 @@ export function IssueDetail() {
       invalidateIssueRunState();
       invalidateIssueCollections();
       pushToast({
-        title: "Monitor check queued",
+        title: t("issueDetailPage.toasts.monitorCheckQueued"),
         tone: "success",
       });
     },
     onError: (err) => {
       pushToast({
-        title: "Monitor check failed",
-        body: err instanceof Error ? err.message : "Unable to trigger the monitor right now",
+        title: t("issueDetailPage.toasts.monitorCheckFailed"),
+        body: err instanceof Error ? err.message : t("issueDetailPage.toasts.unableToTriggerMonitor"),
         tone: "error",
       });
     },
@@ -2473,14 +2477,14 @@ export function IssueDetail() {
         queryClient.invalidateQueries({ queryKey: queryKeys.approvals.list(resolvedCompanyId) });
       }
       pushToast({
-        title: variables.action === "approve" ? "Approval approved" : "Approval rejected",
+        title: variables.action === "approve" ? t("issueDetailPage.toasts.approvalApproved") : t("issueDetailPage.toasts.approvalRejected"),
         tone: "success",
       });
     },
     onError: (err, variables) => {
       pushToast({
-        title: variables.action === "approve" ? "Approval failed" : "Rejection failed",
-        body: err instanceof Error ? err.message : "Unable to update approval",
+        title: variables.action === "approve" ? t("issueDetailPage.toasts.approvalFailed") : t("issueDetailPage.toasts.rejectionFailed"),
+        body: err instanceof Error ? err.message : t("issueDetailPage.toasts.unableToUpdateApproval"),
         tone: "error",
       });
     },
@@ -2577,8 +2581,8 @@ export function IssueDetail() {
         queryClient.setQueryData(queryKeys.issues.detail(issueId!), context.previousIssue);
       }
       pushToast({
-        title: "Comment failed",
-        body: err instanceof Error ? err.message : "Unable to post comment",
+        title: t("issueDetailPage.toasts.commentFailed"),
+        body: err instanceof Error ? err.message : t("issueDetailPage.toasts.unableToPostComment"),
         tone: "error",
       });
     },
@@ -2842,8 +2846,8 @@ export function IssueDetail() {
         queryClient.setQueryData(queryKeys.issues.detail(issueId!), context.previousIssue);
       }
       pushToast({
-        title: "Comment failed",
-        body: err instanceof Error ? err.message : "Unable to post comment",
+        title: t("issueDetailPage.toasts.commentFailed"),
+        body: err instanceof Error ? err.message : t("issueDetailPage.toasts.unableToPostComment"),
         tone: "error",
       });
     },
@@ -2923,8 +2927,8 @@ export function IssueDetail() {
       invalidateIssueDetail();
       invalidateIssueRunState();
       pushToast({
-        title: "Interrupt requested",
-        body: "The active run is stopping so queued comments can continue next.",
+        title: t("issueDetailPage.toasts.interruptRequested"),
+        body: t("issueDetailPage.toasts.activeRunStoppingForQueuedComments"),
         tone: "success",
       });
     },
@@ -2939,8 +2943,8 @@ export function IssueDetail() {
         setLocallyQueuedCommentRunIds(context.previousLocalQueuedCommentRunIds);
       }
       pushToast({
-        title: "Interrupt failed",
-        body: err instanceof Error ? err.message : "Unable to interrupt the active run",
+        title: t("issueDetailPage.toasts.interruptFailed"),
+        body: err instanceof Error ? err.message : t("issueDetailPage.toasts.unableToInterruptActiveRun"),
         tone: "error",
       });
     },
@@ -2961,8 +2965,8 @@ export function IssueDetail() {
       invalidateIssueThreadLazily();
       invalidateIssueCollections();
       pushToast({
-        title: "Queued comment canceled",
-        body: "The queued message was restored to the composer.",
+        title: t("issueDetailPage.toasts.queuedCommentCanceled"),
+        body: t("issueDetailPage.toasts.queuedMessageRestoredToComposer"),
         tone: "success",
       });
     },
@@ -2985,15 +2989,15 @@ export function IssueDetail() {
       invalidateIssueCollections();
       invalidateIssueDocumentAnnotationState();
       pushToast({
-        title: "Comment deleted",
-        body: "The thread now shows a deleted-comment marker.",
+        title: t("issueDetailPage.toasts.commentDeleted"),
+        body: t("issueDetailPage.toasts.threadShowsDeletedCommentMarker"),
         tone: "success",
       });
     },
     onError: (err) => {
       pushToast({
-        title: "Delete failed",
-        body: err instanceof Error ? err.message : "Unable to delete the comment",
+        title: t("issueDetailPage.toasts.deleteFailed"),
+        body: err instanceof Error ? err.message : t("issueDetailPage.toasts.unableToDeleteComment"),
         tone: "error",
       });
     },
@@ -3011,8 +3015,8 @@ export function IssueDetail() {
       if (cancelledCommentBody) {
         restoreQueuedCommentDraft(cancelledCommentBody);
         pushToast({
-          title: "Queued comment canceled",
-          body: "The queued message was restored to the composer.",
+          title: t("issueDetailPage.toasts.queuedCommentCanceled"),
+          body: t("issueDetailPage.toasts.queuedMessageRestoredToComposer"),
           tone: "success",
         });
       }
@@ -3155,7 +3159,7 @@ export function IssueDetail() {
       }
       invalidateIssueCollections();
       navigate(sourceBreadcrumb.href.startsWith("/inbox") ? sourceBreadcrumb.href : "/inbox", { replace: true });
-      pushToast({ title: "Task archived from inbox", tone: "success" });
+      pushToast({ title: t("issueDetailPage.toasts.taskArchivedFromInbox"), tone: "success" });
     },
     onError: (err, id, context) => {
       if (context?.companyId) clearLocalInboxArchive(context.companyId, id);
@@ -3163,8 +3167,8 @@ export function IssueDetail() {
         restoreIssueToInboxCaches(queryClient, context.previousData, id);
       }
       pushToast({
-        title: "Archive failed",
-        body: err instanceof Error ? err.message : "Unable to archive this task from the inbox",
+        title: t("issueDetailPage.toasts.archiveFailed"),
+        body: err instanceof Error ? err.message : t("issueDetailPage.toasts.unableToArchiveTaskFromInbox"),
         tone: "error",
       });
     },
@@ -3545,12 +3549,12 @@ export function IssueDetail() {
     try {
       await copyTextToClipboard(md);
       setCopied(true);
-      pushToast({ title: "Copied to clipboard", tone: "success" });
+      pushToast({ title: t("issueDetailPage.toasts.copiedToClipboard"), tone: "success" });
       setTimeout(() => setCopied(false), 2000);
     } catch (error) {
       pushToast({
-        title: "Copy failed",
-        body: error instanceof Error ? error.message : "Unable to copy task markdown",
+        title: t("issueDetailPage.messages.copyFailed"),
+        body: error instanceof Error ? error.message : t("issueDetailPage.toasts.unableToCopyTaskMarkdown"),
         tone: "error",
       });
     }
@@ -3884,8 +3888,8 @@ export function IssueDetail() {
   const handleReconcileForwardRecoveryAction = useCallback(() => {
     if (!reconcileExecutionWorkspaceId) {
       pushToast({
-        title: "Reconcile failed",
-        body: "This task has no execution workspace to reconcile.",
+        title: t("issueDetailPage.toasts.reconcileFailed"),
+        body: t("issueDetailPage.toasts.noExecutionWorkspaceToReconcile"),
         tone: "error",
       });
       return;
@@ -3899,8 +3903,8 @@ export function IssueDetail() {
     (reason: string) => {
       if (!reconcileExecutionWorkspaceId) {
         pushToast({
-          title: "Reconcile failed",
-          body: "This task has no execution workspace to reconcile.",
+          title: t("issueDetailPage.toasts.reconcileFailed"),
+          body: t("issueDetailPage.toasts.noExecutionWorkspaceToReconcile"),
           tone: "error",
         });
         return;
@@ -3918,8 +3922,8 @@ export function IssueDetail() {
   const handleQuarantineRestoreRecoveryAction = useCallback(() => {
     if (!reconcileExecutionWorkspaceId) {
       pushToast({
-        title: "Repair failed",
-        body: "This task has no execution workspace to repair.",
+        title: t("issueDetailPage.toasts.repairFailed"),
+        body: t("issueDetailPage.toasts.noExecutionWorkspaceToRepair"),
         tone: "error",
       });
       return;
@@ -4057,15 +4061,15 @@ export function IssueDetail() {
   const treeControlPrimaryButtonLabel =
     treeControlMode === "pause"
       ? treeControlScope === "leaf"
-        ? "Pause work"
-        : "Pause and stop work"
+        ? t("issueDetailPage.controls.pauseWork")
+        : t("issueDetailPage.controls.pauseAndStopWork")
       : treeControlMode === "cancel"
         ? `Cancel ${previewAffectedIssueCount} tasks`
       : treeControlMode === "restore"
-          ? `Restore ${previewAffectedIssueCount} tasks`
+          ? t("issueDetailPage.controls.restoreTasks", { count: previewAffectedIssueCount })
           : treeControlScope === "leaf"
-            ? "Resume work"
-            : "Resume subtree";
+            ? t("issueDetailPage.controls.resumeWork")
+            : t("issueDetailPage.controls.resumeSubtree");
   const treePreviewAffectedIssueRows = treePreviewDisplayIssues.map((candidate) => ({
     candidate,
     issue: {
@@ -4089,8 +4093,8 @@ export function IssueDetail() {
   const pausedComposerHint = activePauseHold
     ? (
       issue.assigneeAgentId
-        ? `Sending this comment will wake ${agentMap.get(issue.assigneeAgentId)?.name ?? "the assignee"} for triage while the subtree remains paused.`
-        : "Assign an agent to wake them for triage while the subtree remains paused."
+        ? t("issueDetailPage.composer.wakeAssigneeWhilePaused", { name: agentMap.get(issue.assigneeAgentId)?.name ?? t("issueDetailPage.composer.theAssignee") })
+        : t("issueDetailPage.composer.assignAgentWhilePaused")
     )
     : null;
   const composerHint = pausedComposerHint;
@@ -4119,10 +4123,10 @@ export function IssueDetail() {
         )}
       >
         <Paperclip className="h-3.5 w-3.5 mr-1.5" />
-        {uploadAttachment.isPending || importMarkdownDocument.isPending ? "Uploading..." : (
+        {uploadAttachment.isPending || importMarkdownDocument.isPending ? t("issueDetailPage.attachments.uploading") : (
           <>
-            <span className="hidden sm:inline">Upload attachment</span>
-            <span className="sm:hidden">Upload</span>
+            <span className="hidden sm:inline">{t("issueDetailPage.attachments.uploadAttachment")}</span>
+            <span className="sm:hidden">{t("issueDetailPage.attachments.upload")}</span>
           </>
         )}
       </Button>
@@ -4397,7 +4401,7 @@ export function IssueDetail() {
                   }}
                 >
                   <PauseCircle className="h-3 w-3" />
-                  Pause work...
+                  {t("issueDetailPage.controls.pauseWorkEllipsis")}
                 </button>
               ) : null}
               {canResumeLeafWork ? (
@@ -4411,7 +4415,7 @@ export function IssueDetail() {
                   }}
                 >
                   <PlayCircle className="h-3 w-3" />
-                  Resume work
+                  {t("issueDetailPage.controls.resumeWork")}
                 </button>
               ) : null}
               {canShowSubtreeControls ? (
@@ -4439,7 +4443,7 @@ export function IssueDetail() {
                       }}
                     >
                       <PlayCircle className="h-3 w-3" />
-                      Resume subtree
+                      {t("issueDetailPage.controls.resumeSubtree")}
                     </button>
                   ) : null}
                   <button
@@ -4603,7 +4607,7 @@ export function IssueDetail() {
       {issue.hiddenAt && (
         <div className={cn("flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive", shellSectionClass)}>
           <EyeOff className="h-4 w-4 shrink-0" />
-          This task is hidden
+          {t("issueDetailPage.warnings.taskHidden")}
         </div>
       )}
       {activePauseHold && (
@@ -4612,7 +4616,7 @@ export function IssueDetail() {
             <div className="space-y-2">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-medium">
-                  {childIssues.length === 0 ? "Paused by board." : "Subtree pause is active."}
+                  {childIssues.length === 0 ? t("issueDetailPage.warnings.pausedByBoard") : t("issueDetailPage.warnings.subtreePauseActive")}
                 </span>
                 <span className="text-xs text-amber-900/80 dark:text-amber-100/80">
                   {childIssues.length === 0
@@ -4636,7 +4640,7 @@ export function IssueDetail() {
                       setTreeControlOpen(true);
                     }}
                   >
-                    {childIssues.length === 0 ? "Resume work" : "Resume subtree"}
+                    {childIssues.length === 0 ? t("issueDetailPage.controls.resumeWork") : t("issueDetailPage.controls.resumeSubtree")}
                   </Button>
                   <Button
                     variant="outline"
@@ -4668,7 +4672,7 @@ export function IssueDetail() {
             </div>
           ) : (
             <div className="text-xs">
-              This task is paused by ancestor{" "}
+              {t("issueDetailPage.warnings.taskPausedByAncestor")} 
               {activePauseHoldRoot?.identifier ? (
                 <Link to={createIssueDetailPath(activePauseHoldRoot.identifier)} className="underline">
                   {activePauseHoldRoot.identifier}
@@ -4676,7 +4680,7 @@ export function IssueDetail() {
               ) : (
                 activePauseHold.rootIssueId.slice(0, 8)
               )}
-              . Resume from the root task to deliver deferred work.
+              . {t("issueDetailPage.warnings.resumeFromRootTask")}
             </div>
           )}
         </div>

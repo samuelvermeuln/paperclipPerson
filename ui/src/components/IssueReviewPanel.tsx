@@ -1,4 +1,5 @@
 import type { IssueReviewAttention, IssueReviewAttentionPath, IssueStatus } from "@paperclipai/shared";
+import { useTranslation } from "@/i18n";
 import {
   Activity,
   AlertTriangle,
@@ -63,6 +64,8 @@ export function IssueReviewPanel({ issue }: { issue: ReviewPanelIssue }) {
 }
 
 function CoveredReviewPanel({ reviewAttention }: { reviewAttention: IssueReviewAttention }) {
+  const { t } = useTranslation();
+
   return (
     <div
       className="flex flex-col gap-3 rounded-xl border border-violet-500/30 bg-violet-500/5 px-4 py-3"
@@ -72,9 +75,9 @@ function CoveredReviewPanel({ reviewAttention }: { reviewAttention: IssueReviewA
       <div className="flex items-start gap-2">
         <StatusGlyph status="in_review" size="md" />
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-violet-950 dark:text-violet-100">In review</p>
+          <p className="text-sm font-semibold text-violet-950 dark:text-violet-100">{t("issueDetailPage.review.inReview")}</p>
           <p className="text-xs text-muted-foreground">
-            {reviewAttention.reason ?? "This issue has a maintained review path."}
+            {reviewAttention.reason ?? t("issueDetailPage.review.maintainedPath")}
           </p>
         </div>
       </div>
@@ -86,8 +89,7 @@ function CoveredReviewPanel({ reviewAttention }: { reviewAttention: IssueReviewA
       </ul>
 
       <p className="text-(length:--text-nano) text-muted-foreground">
-        Approving marks this issue done. Requesting changes or sending it back returns it to the
-        assignee.
+        {t("issueDetailPage.review.outcomes")}
       </p>
     </div>
   );
@@ -132,6 +134,8 @@ function StalledReviewPanel({
   issue: ReviewPanelIssue;
   reason: string | null;
 }) {
+  const { t } = useTranslation();
+
   return (
     <div
       className={cn(
@@ -145,11 +149,11 @@ function StalledReviewPanel({
         <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden />
         <div className="min-w-0">
           <p className="text-sm font-semibold text-amber-950 dark:text-amber-100">
-            Nobody is reviewing this
+            {t("issueDetailPage.review.nobodyReviewing")}
           </p>
           <p className="text-xs text-amber-900/80 dark:text-amber-100/80">
             {reason
-              ?? "No reviewer, interaction, approval, or monitor exists — the review has no owner."}
+              ?? t("issueDetailPage.review.noOwner")}
           </p>
         </div>
       </div>

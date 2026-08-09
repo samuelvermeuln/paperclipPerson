@@ -1447,7 +1447,7 @@ function LatestRunCard({ runs, agentId }: { runs: HeartbeatRun[]; agentId: strin
     : run.error ?? "";
 
   // Extract a clean 2-3 line excerpt: first non-empty, non-header, non-list-mark lines
-  const summary = useMemo(() => {
+  const summary = (() => {
     if (!summaryRaw) return "";
     const lines = summaryRaw
       .replace(/^#{1,6}\s+/gm, "")
@@ -1462,7 +1462,7 @@ function LatestRunCard({ runs, agentId }: { runs: HeartbeatRun[]; agentId: strin
       chars += line.length;
     }
     return excerpt.join(" ");
-  }, [summaryRaw]);
+  })();
 
   return (
     <div className="space-y-3">

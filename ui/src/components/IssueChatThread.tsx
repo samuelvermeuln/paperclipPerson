@@ -29,6 +29,7 @@ import {
   type Ref,
   type ReactNode,
 } from "react";
+import { t as translate } from "@/i18n";
 import { Link, useLocation } from "@/lib/router";
 import type {
   Agent,
@@ -620,17 +621,17 @@ function IssueAssigneePausedNotice({ agent }: { agent: Agent | null }) {
 
   const pauseDetail =
     agent.pauseReason === "budget"
-      ? "It was paused by a budget hard stop."
+      ? translate("issueDetailPage.chat.pausedByBudget")
       : agent.pauseReason === "system"
-        ? "It was paused by the system."
-        : "It was paused manually.";
+        ? translate("issueDetailPage.chat.pausedBySystem")
+        : translate("issueDetailPage.chat.pausedManually");
 
   return (
     <div className="mb-3 rounded-md border border-orange-300/70 bg-orange-50/90 px-3 py-2.5 text-sm text-orange-950 shadow-sm dark:border-orange-500/40 dark:bg-orange-500/10 dark:text-orange-100">
       <div className="flex items-start gap-2">
         <PauseCircle className="mt-0.5 h-4 w-4 shrink-0 text-orange-600 dark:text-orange-300" />
         <p className="min-w-0 leading-5">
-          <span className="font-medium">{agent.name}</span> is paused. New runs will not start until the agent is resumed. {pauseDetail}
+          {translate("issueDetailPage.chat.agentPausedNotice", { name: agent.name, detail: pauseDetail })}
         </p>
       </div>
     </div>
@@ -1542,7 +1543,7 @@ function IssueChatUserMessage({
           </div>
         ) : null}
         {deleted ? (
-          <div className="text-sm italic text-muted-foreground">Comment deleted</div>
+          <div className="text-sm italic text-muted-foreground">{translate("issueDetailPage.toasts.commentDeleted")}</div>
         ) : (
           <div className="min-w-0 max-w-full space-y-3">
             <IssueChatTextParts message={message} onAccent={isCurrentUser && !queued} />
@@ -1590,8 +1591,8 @@ function IssueChatUserMessage({
                   setTimeout(() => setCopied(false), 2000);
                 }).catch((error) => {
                   toastActions?.pushToast({
-                    title: "Copy failed",
-                    body: error instanceof Error ? error.message : "Unable to copy message",
+                    title: translate("issueDetailPage.messages.copyFailed"),
+                    body: error instanceof Error ? error.message : translate("issueDetailPage.chat.unableToCopyMessage"),
                     tone: "error",
                   });
                 });
@@ -1604,8 +1605,8 @@ function IssueChatUserMessage({
             <button
               type="button"
               className="inline-flex h-6 w-6 items-center justify-center text-muted-foreground transition-colors hover:text-destructive"
-              title="Delete comment"
-              aria-label="Delete comment"
+              title={translate("issueDetailPage.chat.deleteComment")}
+              aria-label={translate("issueDetailPage.chat.deleteComment")}
               onClick={handleDeleteComment}
             >
               <Trash2 className="h-3.5 w-3.5" />
@@ -1770,8 +1771,8 @@ function IssueChatAssistantMessage({
             setTimeout(() => setCopied(false), 2000);
           }).catch((error) => {
             toastActions?.pushToast({
-              title: "Copy failed",
-              body: error instanceof Error ? error.message : "Unable to copy message",
+              title: translate("issueDetailPage.messages.copyFailed"),
+              body: error instanceof Error ? error.message : translate("issueDetailPage.chat.unableToCopyMessage"),
               tone: "error",
             });
           });
@@ -1806,8 +1807,8 @@ function IssueChatAssistantMessage({
             variant="ghost"
             size="icon-xs"
             className="text-muted-foreground hover:text-foreground"
-            title="More actions"
-            aria-label="More actions"
+            title={translate("issueDetailPage.chat.moreActions")}
+            aria-label={translate("issueDetailPage.chat.moreActions")}
           >
             <MoreHorizontal className="h-3.5 w-3.5" />
           </Button>
@@ -1817,8 +1818,8 @@ function IssueChatAssistantMessage({
             onClick={() => {
               void copyTextToClipboard(copyText).catch((error) => {
                 toastActions?.pushToast({
-                  title: "Copy failed",
-                  body: error instanceof Error ? error.message : "Unable to copy message",
+                  title: translate("issueDetailPage.messages.copyFailed"),
+                  body: error instanceof Error ? error.message : translate("issueDetailPage.chat.unableToCopyMessage"),
                   tone: "error",
                 });
               });
@@ -1896,7 +1897,7 @@ function IssueChatAssistantMessage({
             )}
           >
             {deleted ? (
-              <div className="text-sm italic text-muted-foreground">Comment deleted</div>
+              <div className="text-sm italic text-muted-foreground">{translate("issueDetailPage.toasts.commentDeleted")}</div>
             ) : (
               <div className="min-w-0 max-w-full space-y-3">
                 <IssueChatAssistantParts message={message} hasCoT={false} />
@@ -1972,7 +1973,7 @@ function IssueChatAssistantMessage({
 
           {deleted ? (
             <div className="rounded-sm bg-muted/40 px-3 py-2 text-sm italic text-muted-foreground">
-              Comment deleted
+              {translate("issueDetailPage.toasts.commentDeleted")}
             </div>
           ) : !folded ? (
             <>
@@ -2723,8 +2724,8 @@ function SystemNoticeCommentRow({
       setTimeout(() => setCopied(false), 2000);
     }).catch((error) => {
       toastActions?.pushToast({
-        title: "Copy failed",
-        body: error instanceof Error ? error.message : "Unable to copy system notice",
+        title: translate("issueDetailPage.messages.copyFailed"),
+        body: error instanceof Error ? error.message : translate("issueDetailPage.chat.unableToCopySystemNotice"),
         tone: "error",
       });
     });
@@ -2738,8 +2739,8 @@ function SystemNoticeCommentRow({
       setTimeout(() => setCopiedLink(false), 2000);
     }).catch((error) => {
       toastActions?.pushToast({
-        title: "Copy failed",
-        body: error instanceof Error ? error.message : "Unable to copy system notice link",
+        title: translate("issueDetailPage.messages.copyFailed"),
+        body: error instanceof Error ? error.message : translate("issueDetailPage.chat.unableToCopySystemNoticeLink"),
         tone: "error",
       });
     });
@@ -4083,12 +4084,12 @@ const IssueChatComposer = forwardRef<IssueChatComposerHandle, IssueChatComposerP
             const sizeLabel = formatAttachmentSize(attachment.size);
             const statusLabel =
               attachment.status === "uploading"
-                ? "Uploading to task"
+                ? translate("issueDetailPage.chat.uploadingToTask")
                 : attachment.status === "error"
-                  ? attachment.error ?? "Upload failed"
+                  ? attachment.error ?? translate("issueDetailPage.chat.uploadFailed")
                   : attachment.inline
-                    ? "Inserted inline"
-                    : "Attached to task";
+                    ? translate("issueDetailPage.chat.insertedInline")
+                    : translate("issueDetailPage.chat.attachedToTask");
             return (
               <div
                 key={attachment.id}
@@ -4968,8 +4969,8 @@ export function IssueChatThread({
   const resolvedShowJumpToLatest = showJumpToLatest ?? variant === "full";
   const resolvedEmptyMessage = emptyMessage
     ?? (variant === "embedded"
-      ? "No run output yet."
-      : "This task conversation is empty. Start with a message below.");
+      ? translate("issueDetailPage.chat.noRunOutputYet")
+      : translate("issueDetailPage.chat.emptyConversation"));
   const previousErrorBoundaryMessagesRef = useRef<readonly ThreadMessage[] | null>(null);
   const errorBoundaryResetVersionRef = useRef(0);
   if (previousErrorBoundaryMessagesRef.current !== messages) {
