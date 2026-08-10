@@ -228,7 +228,7 @@ import {
   recoveryAssigneeAdapterOverrides,
   withRecoveryModelProfileHint,
 } from "./recovery/model-profile-hint.js";
-import { ACTIVE_RUN_OUTPUT_SUSPICION_THRESHOLD_MS as RECOVERY_ACTIVE_RUN_OUTPUT_SUSPICION_THRESHOLD_MS, recoveryService } from "./recovery/service.js";
+import { recoveryService } from "./recovery/service.js";
 import {
   buildIssueReviewPathLostIdempotencyKey,
   decideIssueReviewPathRecovery,
@@ -418,14 +418,14 @@ export const WORKSPACE_BUSY_ERROR_CODE = "workspace_busy";
 export const WORKSPACE_BUSY_RETRY_BASE_DELAY_MS = 60 * 1000;
 export const WORKSPACE_BUSY_RETRY_JITTER_MS = 60 * 1000;
 // A running run stops counting as a shared-workspace holder once it has been
-// silent this long. This is recovery's own "suspicious silence" bar for active
-// runs (scanSilentActiveRuns escalates such runs), so a zombie holder cannot
-// park other work on the workspace forever: it stops blocking here at the same
-// moment the recovery machinery starts treating it as stuck. A LIVE holder, in
+// silent this long. Keep this more conservative than the active-run watchdog's
+// first suspicion threshold: we want stale-run recovery to start earlier, but
+// we do not want a merely quiet run to stop serializing shared-workspace access
+// after only 30 minutes and allow concurrent mutation. A LIVE holder, in
 // contrast, never gets overtaken — a deferred run keeps rescheduling until the
 // workspace frees, because dispatching alongside a live holder is exactly the
 // concurrent-mutation failure this gate exists to prevent.
-export const WORKSPACE_BUSY_HOLDER_STALE_AFTER_MS = RECOVERY_ACTIVE_RUN_OUTPUT_SUSPICION_THRESHOLD_MS;
+export const WORKSPACE_BUSY_HOLDER_STALE_AFTER_MS = 60 * 60 * 1000;
 // Issue-level executionWorkspaceSettings.mode values that unambiguously opt an
 // issue's runs out of the shared project workspace, and therefore out of
 // shared-workspace serialization ("isolated" is the legacy alias

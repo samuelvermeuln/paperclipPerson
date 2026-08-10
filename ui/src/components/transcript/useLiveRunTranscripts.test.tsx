@@ -82,6 +82,7 @@ describe("useLiveRunTranscripts", () => {
 
   afterEach(() => {
     globalThis.WebSocket = OriginalWebSocket;
+    vi.useRealTimers();
   });
 
   it("waits for a connecting socket to open before closing it during cleanup", async () => {
@@ -222,6 +223,86 @@ describe("useLiveRunTranscripts", () => {
     });
 
     expect(logMock).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      root.unmount();
+    });
+    container.remove();
+  });
+
+  it("backs off repeated 404 log polling for active runs", async () => {
+    vi.useFakeTimers();
+    logMock.mockReset();
+    logMock.mockRejectedValue(new ApiError("Run log not found", 404, { error: "Run log not found" }));
+
+    function Harness() {
+      useLiveRunTranscripts({
+        companyId: "company-1",
+        runs: [{ id: "run-404", status: "running", adapterType: "codex_local" }],
+        enableRealtimeUpdates: false,
+        logPollIntervalMs: 15_000,
+      });
+      return null;
+    }
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(<Harness />);
+      await Promise.resolve();
+    });
+
+    expect(logMock).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(45_000);
+    });
+    expect(logMock).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(15_000);
+    });
+    expect(logMock).toHaveBeenCalledTimes(2);
+
+    act(() => {
+      root.unmount();
+    });
+    container.remove();
+  });
+
+  it("retries immediately when active-run log metadata changes after a 404", async () => {
+    logMock.mockReset();
+    logMock
+      .mockRejectedValueOnce(new ApiError("Run log not found", 404, { error: "Run log not found" }))
+      .mockResolvedValueOnce({ runId: "run-1", store: "memory", logRef: "log-1", content: "", nextOffset: 0 });
+
+    function Harness({ lastOutputBytes }: { lastOutputBytes?: number }) {
+      useLiveRunTranscripts({
+        companyId: "company-1",
+        runs: [{ id: "run-1", status: "running", adapterType: "codex_local", lastOutputBytes }],
+        enableRealtimeUpdates: false,
+      });
+      return null;
+    }
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(<Harness />);
+      await Promise.resolve();
+    });
+    expect(logMock).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      root.render(<Harness lastOutputBytes={128} />);
+      await Promise.resolve();
+    });
+    expect(logMock).toHaveBeenCalledTimes(2);
+    expect(logMock).toHaveBeenLastCalledWith("run-1", 0, 256_000);
 
     act(() => {
       root.unmount();

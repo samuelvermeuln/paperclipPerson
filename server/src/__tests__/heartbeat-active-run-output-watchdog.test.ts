@@ -256,6 +256,25 @@ describeEmbeddedPostgres("active-run output watchdog", () => {
     return { companyId, managerId, coderId, issueId, runId, issuePrefix };
   }
 
+  it("does not let silent active runs pass the 30-minute suspicion window", async () => {
+    const now = new Date("2026-04-22T20:00:00.000Z");
+    const heartbeat = heartbeatService(db);
+
+    const justBefore = await seedRunningRun({
+      now,
+      ageMs: ACTIVE_RUN_OUTPUT_SUSPICION_THRESHOLD_MS - 60_000,
+    });
+    const beforeResult = await heartbeat.scanSilentActiveRuns({ now, companyId: justBefore.companyId });
+    expect(beforeResult.created).toBe(0);
+
+    const justAfter = await seedRunningRun({
+      now,
+      ageMs: ACTIVE_RUN_OUTPUT_SUSPICION_THRESHOLD_MS + 60_000,
+    });
+    const afterResult = await heartbeat.scanSilentActiveRuns({ now, companyId: justAfter.companyId });
+    expect(afterResult.created).toBe(1);
+  });
+
   it("creates one medium-priority evaluation issue for a suspicious silent run", async () => {
     const now = new Date("2026-04-22T20:00:00.000Z");
     const { companyId, managerId, runId } = await seedRunningRun({

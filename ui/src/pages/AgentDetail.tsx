@@ -747,6 +747,7 @@ export function AgentDetail() {
     queryKey: queryKeys.builtInAgents.list(resolvedCompanyId!),
     queryFn: () => builtInAgentsApi.list(resolvedCompanyId!),
     enabled: !!resolvedCompanyId && builtInAgentsEnabled,
+    retry: false,
   });
   const builtInState = builtInAgentsEnabled
     ? builtInStates?.find((entry) => entry.agentId === resolvedAgentId) ?? null

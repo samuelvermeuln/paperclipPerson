@@ -23,6 +23,7 @@ const LOG_READ_LIMIT_BYTES = 256_000;
 // redundant with the live stream; keep only a slow safety-net poll to cover
 // gaps and reconnects instead of polling every couple of seconds.
 const REALTIME_FALLBACK_POLL_INTERVAL_MS = 30_000;
+const ACTIVE_RUN_LOG_404_RETRY_MS = 60_000;
 const EMPTY_RUN_LOG_CHUNKS: RunLogChunk[] = [];
 
 export interface RunTranscriptSource {
@@ -56,6 +57,10 @@ function runKnownLogBytes(run: RunTranscriptSource): number | null {
     ? run.logBytes
     : run.lastOutputBytes ?? run.logBytes;
   return typeof bytes === "number" && Number.isFinite(bytes) && bytes > 0 ? bytes : null;
+}
+
+function activeRunLogAvailabilityKey(run: RunTranscriptSource): string {
+  return `${run.status}:${runKnownLogBytes(run) ?? 0}`;
 }
 
 export function resolveInitialLogOffset(run: RunTranscriptSource, limitBytes: number): number {
@@ -95,6 +100,8 @@ export function useLiveRunTranscripts({
   const pendingLogRowsByRunRef = useRef(new Map<string, string>());
   const logOffsetByRunRef = useRef(new Map<string, number>());
   const missingTerminalLogRunIdsRef = useRef(new Set<string>());
+  const missingActiveLogRetryAtByRunRef = useRef(new Map<string, number>());
+  const missingActiveLogStateKeyByRunRef = useRef(new Map<string, string>());
   const transcriptCacheRef = useRef(new Map<string, {
     adapterType: string;
     chunks: RunLogChunk[];
@@ -185,6 +192,20 @@ export function useLiveRunTranscripts({
         missingTerminalLogRunIdsRef.current.delete(runId);
       }
     }
+    for (const runId of missingActiveLogRetryAtByRunRef.current.keys()) {
+      if (!knownRunIds.has(runId)) {
+        missingActiveLogRetryAtByRunRef.current.delete(runId);
+        missingActiveLogStateKeyByRunRef.current.delete(runId);
+      }
+    }
+    for (const run of normalizedRuns) {
+      const currentStateKey = activeRunLogAvailabilityKey(run);
+      const previousStateKey = missingActiveLogStateKeyByRunRef.current.get(run.id);
+      if (isTerminalStatus(run.status) || previousStateKey !== currentStateKey) {
+        missingActiveLogRetryAtByRunRef.current.delete(run.id);
+        missingActiveLogStateKeyByRunRef.current.delete(run.id);
+      }
+    }
     for (const runId of transcriptCacheRef.current.keys()) {
       if (!knownRunIds.has(runId)) {
         transcriptCacheRef.current.delete(runId);
@@ -201,11 +222,19 @@ export function useLiveRunTranscripts({
       if (missingTerminalLogRunIdsRef.current.has(run.id)) {
         return;
       }
+      if (!isTerminalStatus(run.status)) {
+        const retryAt = missingActiveLogRetryAtByRunRef.current.get(run.id);
+        if (typeof retryAt === "number" && retryAt > Date.now()) {
+          return;
+        }
+      }
       const offset = logOffsetByRunRef.current.get(run.id) ?? resolveInitialLogOffset(run, logReadLimitBytes);
       try {
         const result = await heartbeatsApi.log(run.id, offset, logReadLimitBytes);
         if (cancelled) return;
 
+        missingActiveLogRetryAtByRunRef.current.delete(run.id);
+        missingActiveLogStateKeyByRunRef.current.delete(run.id);
         appendChunks(run.id, parsePersistedLogContent(run.id, result.content, pendingLogRowsByRunRef.current));
 
         if (result.nextOffset !== undefined) {
@@ -216,8 +245,13 @@ export function useLiveRunTranscripts({
           logOffsetByRunRef.current.set(run.id, offset + result.content.length);
         }
       } catch (error) {
-        if (error instanceof ApiError && error.status === 404 && isTerminalStatus(run.status)) {
-          missingTerminalLogRunIdsRef.current.add(run.id);
+        if (error instanceof ApiError && error.status === 404) {
+          if (isTerminalStatus(run.status)) {
+            missingTerminalLogRunIdsRef.current.add(run.id);
+          } else {
+            missingActiveLogRetryAtByRunRef.current.set(run.id, Date.now() + ACTIVE_RUN_LOG_404_RETRY_MS);
+            missingActiveLogStateKeyByRunRef.current.set(run.id, activeRunLogAvailabilityKey(run));
+          }
         }
       } finally {
         if (!cancelled) {

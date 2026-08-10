@@ -229,6 +229,7 @@ export function Agents() {
     queryKey: queryKeys.builtInAgents.list(selectedCompanyId!),
     queryFn: () => builtInAgentsApi.list(selectedCompanyId!),
     enabled: !!selectedCompanyId && builtInAgentsEnabled,
+    retry: false,
   });
   const builtInByAgentId = useMemo(() => {
     const map = new Map<string, BuiltInAgentState>();

@@ -23,6 +23,7 @@ import { builtInAgentsApi, type BuiltInAgentStatus } from "../api/builtInAgents"
 import { BuiltInLifecycleChip } from "./BuiltInAgentBadges";
 import { authApi } from "../api/auth";
 import { heartbeatsApi } from "../api/heartbeats";
+import { instanceSettingsApi } from "../api/instanceSettings";
 import { SIDEBAR_SCROLL_RESET_STATE } from "../lib/navigation-scroll";
 import { queryKeys } from "../lib/queryKeys";
 import { cn, agentRouteRef, agentUrl, SIDEBAR_RAIL_HIDDEN_LABEL } from "../lib/utils";
@@ -352,10 +353,18 @@ export function SidebarAgents({ streamlined = false }: { streamlined?: boolean }
     queryFn: () => agentsApi.list(selectedCompanyId!),
     enabled: !!selectedCompanyId,
   });
+  const experimentalSettingsQuery = useQuery({
+    queryKey: queryKeys.instance.experimentalSettings,
+    queryFn: () => instanceSettingsApi.getExperimental(),
+    enabled: !!selectedCompanyId,
+    retry: false,
+  });
+  const builtInAgentsEnabled = experimentalSettingsQuery.data?.enableBuiltInAgents === true;
   const { data: builtInAgents } = useQuery({
     queryKey: queryKeys.builtInAgents.list(selectedCompanyId!),
     queryFn: () => builtInAgentsApi.list(selectedCompanyId!),
-    enabled: !!selectedCompanyId,
+    enabled: !!selectedCompanyId && builtInAgentsEnabled,
+    retry: false,
   });
   const builtInStatusByAgentId = useMemo(() => {
     const map = new Map<string, BuiltInAgentStatus>();
