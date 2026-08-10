@@ -588,6 +588,140 @@
       }
     }
   },
+  "agentConfigHelp": {
+    "name": "Nome de exibição deste agente.",
+    "title": "Cargo exibido no organograma.",
+    "role": "Papel organizacional. Determina posição e capacidades.",
+    "reportsTo": "Agente ao qual este agente se reporta na hierarquia da organização.",
+    "capabilities": "Descreve o que este agente pode fazer. Exibido no organograma e usado para roteamento de tarefas.",
+    "adapterType": "Como este agente executa: CLI local (Claude/Codex/OpenCode), OpenClaw Gateway, processo iniciado ou webhook HTTP genérico.",
+    "cwd": "Fallback legado e obsoleto de diretório de trabalho para adaptadores locais. Agentes existentes ainda podem carregar esse valor, mas novas configurações devem usar workspaces de projeto.",
+    "promptTemplate": "Enviado em todo heartbeat. Mantenha pequeno e dinâmico. Use para enquadramento da tarefa atual, não para instruções estáticas grandes. Suporta {{ agent.id }}, {{ agent.name }}, {{ agent.role }} e outras variáveis de template.",
+    "model": "Substitui o modelo padrão usado pelo adaptador.",
+    "thinkingEffort": "Controla a profundidade de raciocínio do modelo. Os valores suportados variam por adaptador/modelo.",
+    "chrome": "Ativa a integração do Claude com o Chrome passando --chrome.",
+    "dangerouslySkipPermissions": "Executa sem supervisão, aprovando automaticamente prompts de permissão do adaptador quando houver suporte.",
+    "dangerouslyBypassSandbox": "Executa o Codex sem restrições de sandbox. Necessário para acesso a sistema de arquivos/rede.",
+    "search": "Ativa a capacidade de busca web do Codex durante as execuções.",
+    "fastMode": "Ativa o modo Fast do Codex. Isso consome créditos/tokens muito mais rápido e é suportado em GPT-5.6, GPT-5.5, GPT-5.4 e IDs manuais de modelo do Codex.",
+    "workspaceStrategy": "Como o Paperclip deve materializar um workspace de execução para este agente. Use project_primary para execução normal no cwd, ou git_worktree para checkouts isolados por issue.",
+    "workspaceBaseRef": "Ref base do git usada ao criar um branch de worktree. Deixe em branco para usar a ref resolvida do workspace ou HEAD.",
+    "workspaceBranchTemplate": "Template para nomear branches derivados. Suporta {{issue.identifier}}, {{issue.title}}, {{agent.name}}, {{project.id}}, {{workspace.repoRef}} e {{slug}}.",
+    "worktreeParentDir": "Diretório onde os worktrees derivados devem ser criados. Caminhos absolutos, com prefixo ~ e relativos ao repositório são suportados.",
+    "runtimeServicesJson": "Definições opcionais de serviços de runtime do workspace. Use para servidores de app compartilhados, workers ou outros processos companheiros de longa duração anexados ao workspace.",
+    "maxTurnsPerRun": "Número máximo de turnos agentivos (chamadas de ferramenta) por execução de heartbeat.",
+    "command": "Comando a executar (ex.: node, python).",
+    "localCommand": "Substitui o caminho do comando CLI que você quer que o adaptador chame (ex.: /usr/local/bin/claude, codex, opencode).",
+    "args": "Argumentos de linha de comando, separados por vírgula.",
+    "extraArgs": "Argumentos extras de CLI para adaptadores locais, separados por vírgula.",
+    "envVars": "Variáveis de ambiente injetadas no processo do adaptador. Use valores simples ou referências a segredos.",
+    "secretAccess": "Segredos aos quais este agente pode acessar. Bindings de variáveis de ambiente são injetados no início da execução; bindings de acesso por API são buscados sob demanda pela API do agente vinculada à execução e nunca são gravados no ambiente.",
+    "bootstrapPrompt": "Enviado apenas quando o Paperclip inicia uma sessão nova. Use para orientação estável de configuração que não deve ser repetida a cada heartbeat.",
+    "payloadTemplateJson": "JSON opcional mesclado aos payloads de requisição do adaptador remoto antes de o Paperclip adicionar seus campos padrão de wake e workspace.",
+    "webhookUrl": "URL que recebe requisições POST quando o agente é invocado.",
+    "heartbeatInterval": "Executa este agente automaticamente em um temporizador. Útil para tarefas periódicas, como verificar trabalho novo.",
+    "intervalSec": "Segundos entre invocações automáticas de heartbeat.",
+    "timeoutSec": "Número máximo de segundos que uma execução pode levar antes de ser encerrada. 0 significa sem timeout.",
+    "graceSec": "Segundos de espera após enviar interrupção antes de forçar o encerramento do processo.",
+    "wakeOnDemand": "Permite que este agente seja acordado por atribuições, chamadas de API, ações da UI ou sistemas automatizados.",
+    "cooldownSec": "Número mínimo de segundos entre execuções consecutivas de heartbeat.",
+    "maxConcurrentRuns": "Número máximo de execuções de heartbeat que podem executar simultaneamente para este agente.",
+    "maxTurnContinuationEnabled": "Enfileira automaticamente execuções de continuação limitadas quando um adaptador para porque o limite de turnos por execução foi esgotado.",
+    "maxTurnContinuationMaxAttempts": "Número máximo de continuações automáticas após uma parada por máximo de turnos. Isso é separado do máximo de turnos por execução.",
+    "maxTurnContinuationDelaySec": "Segundos de espera antes de iniciar cada continuação por máximo de turnos.",
+    "budgetMonthlyCents": "Limite mensal de gasto em centavos. 0 significa sem limite."
+  },
+  "trustPresetSection": {
+    "title": "Confiança",
+    "labels": {
+      "standard": "Padrão",
+      "lowTrustReview": "Revisão de baixa confiança"
+    },
+    "descriptions": {
+      "standard": "Colaboração visível para a empresa. Este é o padrão para trabalho normal.",
+      "lowTrustReview": "Contido para entrada hostil ou não confiável. API do Paperclip restrita, saída em quarentena. Use para revisão de PR e triagem de conteúdo externo."
+    },
+    "fields": {
+      "preset": "Preset de confiança",
+      "presetHint": "Escolha quão amplamente este agente pode ler e agir sobre objetos de trabalho do Paperclip.",
+      "boundaryType": "Tipo de limite"
+    },
+    "boundaryTargets": {
+      "project": "Projeto",
+      "rootIssue": "Issue raiz",
+      "issue": "Issue"
+    },
+    "containment": {
+      "activeTitle": "Contenção ativa",
+      "notConfiguredTitle": "Contenção não configurada",
+      "activeDescription": "Este agente só pode ler e modificar trabalho dentro do limite de revisão atribuído. A saída bruta fica em quarentena de agentes de maior confiança até que um revisor confiável a promova.",
+      "notConfiguredDescription": "Este agente está definido para revisão de baixa confiança, mas nenhum escopo de projeto, issue raiz ou issue foi definido na política central. Adicione um escopo antes que este agente possa executar sem negação."
+    },
+    "states": {
+      "loading": "Carregando…",
+      "noProjectsAvailable": "Nenhum projeto disponível",
+      "noIssuesAvailable": "Nenhuma issue disponível",
+      "selectBoundary": "Selecionar limite"
+    },
+    "messages": {
+      "ceSingleBoundary": "A CE salva um limite de contenção por vez. As políticas salvas incluem este id da empresa.",
+      "managedByEeApi": "Gerenciado por EE/API",
+      "managedByEeApiDescription": "Esta política tem {{boundary}} e não pode ser editada pelo editor CE de limite único.",
+      "wantMoreThanOneBoundary": "Quer definir mais de um limite de contenção?",
+      "advancedPermissionsEditable": "Permissões avançadas continuam editáveis pela extensão de permissões EE quando instalada."
+    },
+    "actions": {
+      "clearBoundary": "Limpar limite",
+      "getPaperclipEe": "Conheça o Paperclip EE.",
+      "viewPolicy": "Ver política"
+    },
+    "policy": {
+      "preset": "Preset",
+      "lowTrustReviewV1": "Revisão de baixa confiança v1",
+      "rawOutput": "Saída bruta",
+      "quarantinedFromHigherTrustAgents": "Em quarentena para agentes de maior confiança",
+      "projects": "Projetos",
+      "rootIssue": "Issue raiz",
+      "explicitIssues": "Issues explícitas",
+      "allowedAgents": "Agentes permitidos",
+      "allowedTools": "Ferramentas permitidas",
+      "allowedSecrets": "Segredos permitidos",
+      "promotionTarget": "Destino de promoção",
+      "eeFields": "Campos EE",
+      "customAdvancedPolicyFieldsPreserved": "Campos personalizados avançados da política preservados"
+    },
+    "counts": {
+      "project": "1 projeto",
+      "projects": "{{count}} projetos",
+      "issue": "1 issue",
+      "issues": "{{count}} issues",
+      "agent": "1 agente",
+      "agents": "{{count}} agentes",
+      "binding": "1 binding",
+      "bindings": "{{count}} bindings",
+      "boundaries": "{{count}} limites"
+    },
+    "summary": {
+      "project": "Projeto {{id}}",
+      "rootIssue": "Issue raiz {{id}}",
+      "issue": "Issue {{id}}",
+      "noneSelected": "Nenhum limite selecionado",
+      "boundaries": "{{count}} limites"
+    },
+    "sourceTrust": {
+      "promoted": "Promovido de baixa confiança",
+      "lowTrustSource": "Fonte de baixa confiança",
+      "promotedTooltip": "Promovido de baixa confiança{{dateSuffix}}.",
+      "onDate": " em {{date}}",
+      "lowTrustTooltip": "Criado por um agente de revisão de baixa confiança. O {{artifactLabel}} bruto não é compartilhado automaticamente com agentes de maior confiança."
+    },
+    "artifactLabels": {
+      "comment": "comentário",
+      "document": "documento",
+      "work product": "produto de trabalho",
+      "content": "conteúdo"
+    }
+  },
   "agents": {
     "title": "Agentes",
     "tabs": {
@@ -830,6 +964,71 @@
       "attachedToTask": "Anexado à tarefa",
       "noRunOutputYet": "Ainda não há saída da execução.",
       "emptyConversation": "A conversa desta tarefa está vazia. Comece com uma mensagem abaixo.",
+      "running": "Executando",
+      "duration": {
+        "second": "{{count}} segundo",
+        "seconds": "{{count}} segundos",
+        "minute": "{{count}} minuto",
+        "minutes": "{{count}} minutos",
+        "hour": "{{count}} hora",
+        "hours": "{{count}} horas"
+      },
+      "liveStatus": {
+        "usingTool": "Usando {{toolName}}",
+        "noOutputStillRunning": "sem saída por {{duration}} - ainda em execução",
+        "ago": "há {{duration}}"
+      },
+      "chainOfThought": {
+        "working": "Trabalhando",
+        "worked": "Trabalhou",
+        "forDuration": "por {{duration}}"
+      },
+      "metadata": {
+        "none": "Nenhum",
+        "run": "execução",
+        "status": "Status",
+        "assignee": "Responsável",
+        "workspace": "Workspace",
+        "updatedTask": "atualizou esta tarefa",
+        "requestedFollowUp": "solicitou acompanhamento"
+      },
+      "agentSummaries": {
+        "status": {
+          "backlog": "backlog",
+          "todo": "a fazer",
+          "inProgress": "em andamento",
+          "inReview": "em revisão",
+          "blocked": "bloqueada",
+          "done": "concluída",
+          "cancelled": "cancelada"
+        },
+        "codes": {
+          "noEligibleWork": "Nenhum trabalho elegível"
+        },
+        "messages": {
+          "decompositionResume": "Resumo: {{issueIdentifier}} foi decomposta em {{count}} subtarefas delegadas para {{team}}. Verifique o estado atual das subtarefas.",
+          "childrenPickedUp": "As {{count}} subtarefas estão {{childStatus}} — {{team}} as assumiu. A tarefa pai permanece {{parentStatus}} com caminho de continuação ativo (subtarefas em execução). Nenhuma ação adicional necessária neste heartbeat.",
+          "decompositionDelegated": "{{issueIdentifier}}: {{count}} subtarefas estão todas {{childStatus}} com {{team}}. Decomposição concluída, execução delegada. A tarefa pai permanece {{parentStatus}} — próximo wake quando as subtarefas forem concluídas ou chegar um novo evento.",
+          "runError": "Erro de execução: {{message}}",
+          "workedFor": "Trabalhou por {{duration}}",
+          "failedAfter": "Falhou após {{duration}}",
+          "timedOutAfter": "Tempo esgotado após {{duration}}",
+          "interruptedByBoardAfter": "Interrompida pelo board após {{duration}}",
+          "pausedByBoardAfter": "Pausada pelo board após {{duration}}",
+          "cancelledAfter": "Cancelada após {{duration}}",
+          "finishedWork": "Trabalho concluído",
+          "runFailed": "Execução falhou",
+          "runTimedOut": "Tempo da execução esgotado",
+          "interruptedByBoard": "Interrompida pelo board",
+          "pausedByBoard": "Pausada pelo board",
+          "runCancelled": "Execução cancelada",
+          "queuedEllipsis": "Na fila...",
+          "workingEllipsis": "Trabalhando...",
+          "runFinished": "Execução concluída",
+          "queued": "Na fila",
+          "working": "Trabalhando"
+        }
+      },
       "deleteCommentDialog": {
         "title": "Excluir comentário?",
         "description": "Isso substituirá o comentário por um marcador de comentário excluído."

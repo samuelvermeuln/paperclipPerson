@@ -8,6 +8,7 @@ import {
   setSingleLowTrustBoundaryTarget,
   summarizeLowTrustBoundaryTarget,
 } from "./trust-policy-ui";
+import { t as translate } from "@/i18n";
 
 describe("trust-policy-ui low-trust boundary helpers", () => {
   it("writes one project boundary with mode and company id", () => {
@@ -80,7 +81,7 @@ describe("trust-policy-ui low-trust boundary helpers", () => {
     });
 
     expect(getSingleLowTrustBoundaryTarget(boundary)).toEqual({ type: "root_issue", id: "issue-root" });
-    expect(summarizeLowTrustBoundaryTarget(boundary)).toBe("Root issue issue-ro");
+    expect(summarizeLowTrustBoundaryTarget(boundary)).toBe(translate("trustPresetSection.summary.rootIssue", { id: "issue-ro" }));
   });
 
   it("marks multi-boundary policies read-only for CE", () => {
@@ -92,7 +93,7 @@ describe("trust-policy-ui low-trust boundary helpers", () => {
 
     expect(isCeLowTrustBoundaryEditable(boundary)).toBe(false);
     expect(getSingleLowTrustBoundaryTarget(boundary)).toBeNull();
-    expect(summarizeLowTrustBoundaryTarget(boundary)).toBe("2 boundaries");
+    expect(summarizeLowTrustBoundaryTarget(boundary)).toBe(translate("trustPresetSection.summary.boundaries", { count: 2 }));
   });
 
   it("clears the CE boundary without removing non-scope fields", () => {

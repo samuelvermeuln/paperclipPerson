@@ -7,6 +7,7 @@ import type {
   ThreadSystemMessage,
   ThreadUserMessage,
 } from "@assistant-ui/react";
+import { t as translate } from "@/i18n";
 import type { Agent, IssueComment } from "@paperclipai/shared";
 import type { ActiveRunForIssue, LiveRunForIssue } from "../api/heartbeats";
 import { formatAssigneeUserLabel } from "./assignees";
@@ -703,18 +704,28 @@ export function formatDurationWords(ms: number | null) {
   if (ms === null || !Number.isFinite(ms) || ms <= 0) return null;
   const totalSeconds = Math.max(1, Math.round(ms / 1000));
   if (totalSeconds < 60) {
-    return `${totalSeconds} second${totalSeconds === 1 ? "" : "s"}`;
+    return translate(totalSeconds === 1
+      ? "issueDetailPage.chat.duration.second"
+      : "issueDetailPage.chat.duration.seconds", { count: totalSeconds });
   }
   const totalMinutes = Math.round(totalSeconds / 60);
   if (totalMinutes < 60) {
-    return `${totalMinutes} minute${totalMinutes === 1 ? "" : "s"}`;
+    return translate(totalMinutes === 1
+      ? "issueDetailPage.chat.duration.minute"
+      : "issueDetailPage.chat.duration.minutes", { count: totalMinutes });
   }
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
   if (minutes === 0) {
-    return `${hours} hour${hours === 1 ? "" : "s"}`;
+    return translate(hours === 1
+      ? "issueDetailPage.chat.duration.hour"
+      : "issueDetailPage.chat.duration.hours", { count: hours });
   }
-  return `${hours} hour${hours === 1 ? "" : "s"} ${minutes} minute${minutes === 1 ? "" : "s"}`;
+  return `${translate(hours === 1
+    ? "issueDetailPage.chat.duration.hour"
+    : "issueDetailPage.chat.duration.hours", { count: hours })} ${translate(minutes === 1
+      ? "issueDetailPage.chat.duration.minute"
+      : "issueDetailPage.chat.duration.minutes", { count: minutes })}`;
 }
 
 function runDurationLabel(run: {

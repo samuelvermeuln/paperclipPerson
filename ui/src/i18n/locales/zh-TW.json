@@ -588,6 +588,140 @@
       }
     }
   },
+  "agentConfigHelp": {
+    "name": "Display name for this agent.",
+    "title": "Job title shown in the org chart.",
+    "role": "Organizational role. Determines position and capabilities.",
+    "reportsTo": "The agent this one reports to in the org hierarchy.",
+    "capabilities": "Describes what this agent can do. Shown in the org chart and used for task routing.",
+    "adapterType": "How this agent runs: local CLI (Claude/Codex/OpenCode), OpenClaw Gateway, spawned process, or generic HTTP webhook.",
+    "cwd": "Deprecated legacy working directory fallback for local adapters. Existing agents may still carry this value, but new configurations should use project workspaces instead.",
+    "promptTemplate": "Sent on every heartbeat. Keep this small and dynamic. Use it for current-task framing, not large static instructions. Supports {{ agent.id }}, {{ agent.name }}, {{ agent.role }} and other template variables.",
+    "model": "Override the default model used by the adapter.",
+    "thinkingEffort": "Control model reasoning depth. Supported values vary by adapter/model.",
+    "chrome": "Enable Claude's Chrome integration by passing --chrome.",
+    "dangerouslySkipPermissions": "Run unattended by auto-approving adapter permission prompts when supported.",
+    "dangerouslyBypassSandbox": "Run Codex without sandbox restrictions. Required for filesystem/network access.",
+    "search": "Enable Codex web search capability during runs.",
+    "fastMode": "Enable Codex Fast mode. This burns credits/tokens much faster and is supported on GPT-5.6, GPT-5.5, GPT-5.4, and manual Codex model IDs.",
+    "workspaceStrategy": "How Paperclip should realize an execution workspace for this agent. Keep project_primary for normal cwd execution, or use git_worktree for issue-scoped isolated checkouts.",
+    "workspaceBaseRef": "Base git ref used when creating a worktree branch. Leave blank to use the resolved workspace ref or HEAD.",
+    "workspaceBranchTemplate": "Template for naming derived branches. Supports {{issue.identifier}}, {{issue.title}}, {{agent.name}}, {{project.id}}, {{workspace.repoRef}}, and {{slug}}.",
+    "worktreeParentDir": "Directory where derived worktrees should be created. Absolute, ~-prefixed, and repo-relative paths are supported.",
+    "runtimeServicesJson": "Optional workspace runtime service definitions. Use this for shared app servers, workers, or other long-lived companion processes attached to the workspace.",
+    "maxTurnsPerRun": "Maximum number of agentic turns (tool calls) per heartbeat run.",
+    "command": "The command to execute (e.g. node, python).",
+    "localCommand": "Override the path to the CLI command you want the adapter to call (e.g. /usr/local/bin/claude, codex, opencode).",
+    "args": "Command-line arguments, comma-separated.",
+    "extraArgs": "Extra CLI arguments for local adapters, comma-separated.",
+    "envVars": "Environment variables injected into the adapter process. Use plain values or secret references.",
+    "secretAccess": "Secrets this agent can reach. Env-var bindings are injected at run start; API-access bindings are fetched on demand via the run-bound agent API and never written to the environment.",
+    "bootstrapPrompt": "Only sent when Paperclip starts a fresh session. Use this for stable setup guidance that should not be repeated on every heartbeat.",
+    "payloadTemplateJson": "Optional JSON merged into remote adapter request payloads before Paperclip adds its standard wake and workspace fields.",
+    "webhookUrl": "The URL that receives POST requests when the agent is invoked.",
+    "heartbeatInterval": "Run this agent automatically on a timer. Useful for periodic tasks like checking for new work.",
+    "intervalSec": "Seconds between automatic heartbeat invocations.",
+    "timeoutSec": "Maximum seconds a run can take before being terminated. 0 means no timeout.",
+    "graceSec": "Seconds to wait after sending interrupt before force-killing the process.",
+    "wakeOnDemand": "Allow this agent to be woken by assignments, API calls, UI actions, or automated systems.",
+    "cooldownSec": "Minimum seconds between consecutive heartbeat runs.",
+    "maxConcurrentRuns": "Maximum number of heartbeat runs that can execute simultaneously for this agent.",
+    "maxTurnContinuationEnabled": "Automatically queue bounded continuation runs when an adapter stops because its per-run turn cap was exhausted.",
+    "maxTurnContinuationMaxAttempts": "Maximum automatic continuations after one max-turn stop. This is separate from max turns per run.",
+    "maxTurnContinuationDelaySec": "Seconds to wait before starting each max-turn continuation.",
+    "budgetMonthlyCents": "Monthly spending limit in cents. 0 means no limit."
+  },
+  "trustPresetSection": {
+    "title": "Trust",
+    "labels": {
+      "standard": "Standard",
+      "lowTrustReview": "Low-trust review"
+    },
+    "descriptions": {
+      "standard": "Company-visible collaboration. This is the default for normal work.",
+      "lowTrustReview": "Contained for hostile or untrusted input. Narrow Paperclip API, quarantined output. Use for PR review and external-content triage."
+    },
+    "fields": {
+      "preset": "Trust preset",
+      "presetHint": "Choose how broadly this agent can read and act on Paperclip work objects.",
+      "boundaryType": "Boundary type"
+    },
+    "boundaryTargets": {
+      "project": "Project",
+      "rootIssue": "Root issue",
+      "issue": "Issue"
+    },
+    "containment": {
+      "activeTitle": "Containment active",
+      "notConfiguredTitle": "Containment not configured",
+      "activeDescription": "This agent can only read and mutate work inside its assigned review boundary. Raw output is quarantined from higher-trust agents until a trusted reviewer promotes it.",
+      "notConfiguredDescription": "This agent is set to low-trust review, but no project, root issue, or issue scope is set in the core policy. Add a scope before this agent can run without denial."
+    },
+    "states": {
+      "loading": "Loading…",
+      "noProjectsAvailable": "No projects available",
+      "noIssuesAvailable": "No issues available",
+      "selectBoundary": "Select boundary"
+    },
+    "messages": {
+      "ceSingleBoundary": "CE saves one containment boundary at a time. Saved policies include this company id.",
+      "managedByEeApi": "Managed by EE/API",
+      "managedByEeApiDescription": "This policy has {{boundary}} and cannot be edited by the CE single-boundary editor.",
+      "wantMoreThanOneBoundary": "Want to set more than one containment boundary?",
+      "advancedPermissionsEditable": "Advanced permissions remain editable through the EE permissions extension when installed."
+    },
+    "actions": {
+      "clearBoundary": "Clear boundary",
+      "getPaperclipEe": "Get Paperclip EE.",
+      "viewPolicy": "View policy"
+    },
+    "policy": {
+      "preset": "Preset",
+      "lowTrustReviewV1": "Low-trust review v1",
+      "rawOutput": "Raw output",
+      "quarantinedFromHigherTrustAgents": "Quarantined from higher-trust agents",
+      "projects": "Projects",
+      "rootIssue": "Root issue",
+      "explicitIssues": "Explicit issues",
+      "allowedAgents": "Allowed agents",
+      "allowedTools": "Allowed tools",
+      "allowedSecrets": "Allowed secrets",
+      "promotionTarget": "Promotion target",
+      "eeFields": "EE fields",
+      "customAdvancedPolicyFieldsPreserved": "Custom advanced policy fields preserved"
+    },
+    "counts": {
+      "project": "1 project",
+      "projects": "{{count}} projects",
+      "issue": "1 issue",
+      "issues": "{{count}} issues",
+      "agent": "1 agent",
+      "agents": "{{count}} agents",
+      "binding": "1 binding",
+      "bindings": "{{count}} bindings",
+      "boundaries": "{{count}} boundaries"
+    },
+    "summary": {
+      "project": "Project {{id}}",
+      "rootIssue": "Root issue {{id}}",
+      "issue": "Issue {{id}}",
+      "noneSelected": "No boundary selected",
+      "boundaries": "{{count}} boundaries"
+    },
+    "sourceTrust": {
+      "promoted": "Promoted from low-trust",
+      "lowTrustSource": "Low-trust source",
+      "promotedTooltip": "Promoted from low-trust{{dateSuffix}}.",
+      "onDate": " on {{date}}",
+      "lowTrustTooltip": "Authored by a low-trust review agent. Raw {{artifactLabel}} is not auto-shared with higher-trust agents."
+    },
+    "artifactLabels": {
+      "comment": "comment",
+      "document": "document",
+      "work product": "work product",
+      "content": "content"
+    }
+  },
   "agents": {
     "title": "Agents",
     "tabs": {
@@ -830,6 +964,71 @@
       "attachedToTask": "Attached to task",
       "noRunOutputYet": "No run output yet.",
       "emptyConversation": "This task conversation is empty. Start with a message below.",
+      "running": "Running",
+      "duration": {
+        "second": "{{count}} second",
+        "seconds": "{{count}} seconds",
+        "minute": "{{count}} minute",
+        "minutes": "{{count}} minutes",
+        "hour": "{{count}} hour",
+        "hours": "{{count}} hours"
+      },
+      "liveStatus": {
+        "usingTool": "Using {{toolName}}",
+        "noOutputStillRunning": "no output for {{duration}} - still running",
+        "ago": "{{duration}} ago"
+      },
+      "chainOfThought": {
+        "working": "Working",
+        "worked": "Worked",
+        "forDuration": "for {{duration}}"
+      },
+      "metadata": {
+        "none": "None",
+        "run": "run",
+        "status": "Status",
+        "assignee": "Assignee",
+        "workspace": "Workspace",
+        "updatedTask": "updated this task",
+        "requestedFollowUp": "requested follow-up"
+      },
+      "agentSummaries": {
+        "status": {
+          "backlog": "backlog",
+          "todo": "to do",
+          "inProgress": "in progress",
+          "inReview": "in review",
+          "blocked": "blocked",
+          "done": "done",
+          "cancelled": "cancelled"
+        },
+        "codes": {
+          "noEligibleWork": "No eligible work"
+        },
+        "messages": {
+          "decompositionResume": "Summary: {{issueIdentifier}} decomposed into {{count}} child issues delegated to {{team}}. Verify current state of children.",
+          "childrenPickedUp": "All {{count}} children {{childStatus}} — {{team}} picked them up. Parent stays {{parentStatus}} with live continuation path (children executing). No further action needed this heartbeat.",
+          "decompositionDelegated": "{{issueIdentifier}}: {{count}} child issues all {{childStatus}} with {{team}}. Decomposition complete, execution delegated. Parent remains {{parentStatus}} — next wake when children complete or new event arrives.",
+          "runError": "Run error: {{message}}",
+          "workedFor": "Worked for {{duration}}",
+          "failedAfter": "Failed after {{duration}}",
+          "timedOutAfter": "Timed out after {{duration}}",
+          "interruptedByBoardAfter": "Interrupted by board after {{duration}}",
+          "pausedByBoardAfter": "Paused by board after {{duration}}",
+          "cancelledAfter": "Cancelled after {{duration}}",
+          "finishedWork": "Finished work",
+          "runFailed": "Run failed",
+          "runTimedOut": "Run timed out",
+          "interruptedByBoard": "Interrupted by board",
+          "pausedByBoard": "Paused by board",
+          "runCancelled": "Run cancelled",
+          "queuedEllipsis": "Queued...",
+          "workingEllipsis": "Working...",
+          "runFinished": "Run finished",
+          "queued": "Queued",
+          "working": "Working"
+        }
+      },
       "deleteCommentDialog": {
         "title": "Delete comment?",
         "description": "This will replace the comment with a deleted-comment marker."

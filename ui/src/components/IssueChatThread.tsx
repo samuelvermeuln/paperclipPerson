@@ -351,14 +351,14 @@ function IssueChatLiveRunStatusLine({
 
   const primary =
     currentToolName
-      ? `Using ${currentToolName}`
+      ? translate("issueDetailPage.chat.liveStatus.usingTool", { toolName: currentToolName })
       : lastAssistantSnippet
         ? lastAssistantSnippet
         : currentStatusMessage;
   const activityText = lastActivityElapsed
     ? lastActivityAgeMs !== null && lastActivityAgeMs >= 15_000
-      ? `no output for ${lastActivityElapsed} - still running`
-      : `${lastActivityElapsed} ago`
+      ? translate("issueDetailPage.chat.liveStatus.noOutputStillRunning", { duration: lastActivityElapsed })
+      : translate("issueDetailPage.chat.liveStatus.ago", { duration: lastActivityElapsed })
     : "";
   const text = [primary, activityText].filter(Boolean).join(" · ");
   if (!text) return null;
@@ -831,6 +831,7 @@ const IssueChatTextPart = memo(function IssueChatTextPart({ text, recessed, onAc
   if (isSuccessfulRunHandoffComment(text)) {
     return <SuccessfulRunHandoffCommentCallout text={text} recessed={recessed} onImageClick={onImageClick} />;
   }
+  const renderedText = translateAgentSummaryText(text);
   return (
     <WorkspaceFileMarkdownBody
       className={cn("text-sm leading-6", onAccent && "paperclip-markdown-on-accent")}
@@ -840,7 +841,7 @@ const IssueChatTextPart = memo(function IssueChatTextPart({ text, recessed, onAc
       externalReferences={externalReferences}
       linkCaseReferences={linkCaseReferences}
     >
-      {text}
+      {renderedText}
     </WorkspaceFileMarkdownBody>
   );
 });
@@ -881,8 +882,8 @@ export function SuccessfulRunHandoffCommentCallout({
 }
 
 function humanizeValue(value: string | null) {
-  if (!value) return "None";
-  return value.replace(/_/g, " ");
+  if (!value) return translate("issueDetailPage.chat.metadata.none");
+  return translateAgentSummaryStatus(value);
 }
 
 function initialsForName(name: string) {
@@ -1002,15 +1003,15 @@ function IssueChatChainOfThought({
   let headerVerb: string;
   let headerSuffix: string | null = null;
   if (isActive) {
-    headerVerb = "Working";
-    if (liveElapsed) headerSuffix = `for ${liveElapsed}`;
+    headerVerb = translate("issueDetailPage.chat.chainOfThought.working");
+    if (liveElapsed) headerSuffix = translate("issueDetailPage.chat.chainOfThought.forDuration", { duration: liveElapsed });
   } else if (segmentTiming) {
     const durationMs = segmentTiming.endMs - segmentTiming.startMs;
     const durationText = formatDurationWords(durationMs);
-    headerVerb = "Worked";
-    if (durationText) headerSuffix = `for ${durationText}`;
+    headerVerb = translate("issueDetailPage.chat.chainOfThought.worked");
+    if (durationText) headerSuffix = translate("issueDetailPage.chat.chainOfThought.forDuration", { duration: durationText });
   } else {
-    headerVerb = "Worked";
+    headerVerb = translate("issueDetailPage.chat.chainOfThought.worked");
   }
 
   const toolSummary = toolCountSummary(toolParts);
@@ -1908,7 +1909,7 @@ function IssueChatAssistantMessage({
                         key={`${message.id}:notice:${index}`}
                         className="rounded-sm border border-border/60 bg-accent/20 px-3 py-2 text-sm text-muted-foreground"
                       >
-                        {notice}
+                        {translateAgentSummaryText(notice)}
                       </div>
                     ))}
                   </div>
@@ -1965,7 +1966,7 @@ function IssueChatAssistantMessage({
                   )}
                 >
                   <Loader2 className="h-3 w-3 animate-spin" />
-                  Running
+                  {translate("issueDetailPage.chat.running")}
                 </Badge>
               ) : null}
             </div>
@@ -2001,7 +2002,7 @@ function IssueChatAssistantMessage({
                         key={`${message.id}:notice:${index}`}
                         className="rounded-sm border border-border/60 bg-accent/20 px-3 py-2 text-sm text-muted-foreground"
                       >
-                        {notice}
+                        {translateAgentSummaryText(notice)}
                       </div>
                     ))}
                   </div>
@@ -2603,6 +2604,71 @@ function translateSystemNoticeBodyText(bodyText: string) {
   return key ? translate(key) : bodyText;
 }
 
+const AGENT_SUMMARY_STATUS_KEY_MAP = {
+  backlog: "issueDetailPage.chat.agentSummaries.status.backlog",
+  todo: "issueDetailPage.chat.agentSummaries.status.todo",
+  in_progress: "issueDetailPage.chat.agentSummaries.status.inProgress",
+  in_review: "issueDetailPage.chat.agentSummaries.status.inReview",
+  blocked: "issueDetailPage.chat.agentSummaries.status.blocked",
+  done: "issueDetailPage.chat.agentSummaries.status.done",
+  cancelled: "issueDetailPage.chat.agentSummaries.status.cancelled",
+} as const;
+
+function translateAgentSummaryStatus(status: string) {
+  const key = AGENT_SUMMARY_STATUS_KEY_MAP[status.trim() as keyof typeof AGENT_SUMMARY_STATUS_KEY_MAP];
+  return key ? translate(key) : status.replace(/_/g, " ");
+}
+
+function translateAgentSummaryText(text: string) {
+  return text
+    .replace(
+      /^Resume:\s+([A-Z0-9-]+)\s+decomposed into\s+(\d+)\s+child issue(?:s)?\s+delegated to\s+(.+?)\.\s+Verify current state of children\.$/gm,
+      (_match, issueIdentifier: string, count: string, team: string) => translate("issueDetailPage.chat.agentSummaries.messages.decompositionResume", {
+        issueIdentifier,
+        count: Number(count),
+        team,
+      }),
+    )
+    .replace(
+      /^All\s+(\d+)\s+(?:children|child issues)\s+([a-z_]+)\s+—\s+(.+?)\s+picked them up\.\s+Parent stays\s+([a-z_]+)\s+with live continuation path \(children executing\)\.\s+No further action needed this heartbeat\.$/gm,
+      (_match, count: string, childStatus: string, team: string, parentStatus: string) => translate("issueDetailPage.chat.agentSummaries.messages.childrenPickedUp", {
+        count: Number(count),
+        childStatus: translateAgentSummaryStatus(childStatus),
+        team,
+        parentStatus: translateAgentSummaryStatus(parentStatus),
+      }),
+    )
+    .replace(
+      /^([A-Z0-9-]+):\s+(\d+)\s+child issue(?:s)?\s+all\s+([a-z_]+)\s+with\s+(.+?)\.\s+Decomposition complete, execution delegated\.\s+Parent remains\s+([a-z_]+)\s+—\s+next wake when children complete or new event arrives\.$/gm,
+      (_match, issueIdentifier: string, count: string, childStatus: string, team: string, parentStatus: string) => translate("issueDetailPage.chat.agentSummaries.messages.decompositionDelegated", {
+        issueIdentifier,
+        count: Number(count),
+        childStatus: translateAgentSummaryStatus(childStatus),
+        team,
+        parentStatus: translateAgentSummaryStatus(parentStatus),
+      }),
+    )
+    .replace(/^Run error:\s+(.+)$/gm, (_match, message: string) => translate("issueDetailPage.chat.agentSummaries.messages.runError", { message }))
+    .replace(/^Worked for\s+(.+)$/gm, (_match, duration: string) => translate("issueDetailPage.chat.agentSummaries.messages.workedFor", { duration }))
+    .replace(/^Failed after\s+(.+)$/gm, (_match, duration: string) => translate("issueDetailPage.chat.agentSummaries.messages.failedAfter", { duration }))
+    .replace(/^Timed out after\s+(.+)$/gm, (_match, duration: string) => translate("issueDetailPage.chat.agentSummaries.messages.timedOutAfter", { duration }))
+    .replace(/^Interrupted by board after\s+(.+)$/gm, (_match, duration: string) => translate("issueDetailPage.chat.agentSummaries.messages.interruptedByBoardAfter", { duration }))
+    .replace(/^Paused by board after\s+(.+)$/gm, (_match, duration: string) => translate("issueDetailPage.chat.agentSummaries.messages.pausedByBoardAfter", { duration }))
+    .replace(/^Cancelled after\s+(.+)$/gm, (_match, duration: string) => translate("issueDetailPage.chat.agentSummaries.messages.cancelledAfter", { duration }))
+    .replace(/^Finished work$/gm, translate("issueDetailPage.chat.agentSummaries.messages.finishedWork"))
+    .replace(/^Run failed$/gm, translate("issueDetailPage.chat.agentSummaries.messages.runFailed"))
+    .replace(/^Run timed out$/gm, translate("issueDetailPage.chat.agentSummaries.messages.runTimedOut"))
+    .replace(/^Interrupted by board$/gm, translate("issueDetailPage.chat.agentSummaries.messages.interruptedByBoard"))
+    .replace(/^Paused by board$/gm, translate("issueDetailPage.chat.agentSummaries.messages.pausedByBoard"))
+    .replace(/^Run cancelled$/gm, translate("issueDetailPage.chat.agentSummaries.messages.runCancelled"))
+    .replace(/^Queued\.\.\.$/gm, translate("issueDetailPage.chat.agentSummaries.messages.queuedEllipsis"))
+    .replace(/^Working\.\.\.$/gm, translate("issueDetailPage.chat.agentSummaries.messages.workingEllipsis"))
+    .replace(/^Run finished$/gm, translate("issueDetailPage.chat.agentSummaries.messages.runFinished"))
+    .replace(/^Queued$/gm, translate("issueDetailPage.chat.agentSummaries.messages.queued"))
+    .replace(/^Working$/gm, translate("issueDetailPage.chat.agentSummaries.messages.working"))
+    .replace(/^NO_ELIGIBLE_WORK$/gm, translate("issueDetailPage.chat.agentSummaries.codes.noEligibleWork"));
+}
+
 // A system notice whose presentation opts into `density: "compact"` collapses to
 // a single quiet row — tone dot + title (+ author) + timestamp + chevron.
 // Expanding reveals the full SystemNotice card (body + details), so no
@@ -2952,7 +3018,9 @@ function IssueChatSystemMessage({ message }: { message: ThreadMessage }) {
         <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 text-xs">
           <span className="font-medium text-foreground">{actorName}</span>
           <span className="text-muted-foreground">
-            {custom.followUpRequested === true ? "requested follow-up" : "updated this task"}
+            {custom.followUpRequested === true
+              ? translate("issueDetailPage.chat.metadata.requestedFollowUp")
+              : translate("issueDetailPage.chat.metadata.updatedTask")}
           </span>
           <a
             href={anchorId ? `#${anchorId}` : undefined}
@@ -2965,7 +3033,7 @@ function IssueChatSystemMessage({ message }: { message: ThreadMessage }) {
         {statusChange ? (
           <div className="flex flex-wrap items-center gap-1.5 text-xs">
             <span className="text-(length:--text-nano) font-medium uppercase tracking-wider text-muted-foreground/70">
-              Status
+              {translate("issueDetailPage.chat.metadata.status")}
             </span>
             <span className="text-muted-foreground">{humanizeValue(statusChange.from)}</span>
             <ArrowRight className="h-3 w-3 text-muted-foreground/70" />
@@ -2977,7 +3045,7 @@ function IssueChatSystemMessage({ message }: { message: ThreadMessage }) {
           <div className="space-y-1">
             <div className={cn("flex flex-wrap items-center gap-1.5 text-xs", isCurrentUser && "justify-end")}>
               <span className="text-(length:--text-nano) font-medium uppercase tracking-wider text-muted-foreground/70">
-                Assignee
+                {translate("issueDetailPage.chat.metadata.assignee")}
               </span>
               <AssigneeChip assignee={assigneeChange.from} resolvers={handoffResolvers} />
               <ArrowRight className="h-3 w-3 text-muted-foreground/70" />
@@ -2996,7 +3064,7 @@ function IssueChatSystemMessage({ message }: { message: ThreadMessage }) {
         {workspaceChange ? (
           <div className="flex flex-wrap items-center gap-1.5 text-xs">
             <span className="text-(length:--text-nano) font-medium uppercase tracking-wider text-muted-foreground/70">
-              Workspace
+              {translate("issueDetailPage.chat.metadata.workspace")}
             </span>
             <span className="text-muted-foreground">
               {formatTimelineWorkspaceLabel(workspaceChange.from)}
@@ -3024,7 +3092,7 @@ function IssueChatSystemMessage({ message }: { message: ThreadMessage }) {
           <Link to={`/agents/${runAgentId}`} className="font-medium text-foreground transition-colors hover:underline">
             {displayedRunAgentName}
           </Link>
-          <span className="text-muted-foreground">run</span>
+          <span className="text-muted-foreground">{translate("issueDetailPage.chat.metadata.run")}</span>
           <Link
             to={`/agents/${runAgentId}/runs/${runId}`}
             className="inline-flex items-center rounded-md border border-border bg-accent/40 px-1.5 py-0.5 font-mono text-(length:--text-nano) text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
