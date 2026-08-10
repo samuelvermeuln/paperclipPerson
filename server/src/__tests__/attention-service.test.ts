@@ -611,12 +611,12 @@ describeEmbeddedPostgres("attention service", () => {
 
     const feed = await attentionService(db).list(companyId, { userId: "board-user" });
 
-    expect(feed.totalCount).toBe(12);
+    expect(feed.totalCount).toBe(13);
     expect(feed.countsBySourceKind).toMatchObject({
       approval: 1,
       issue_thread_interaction: 1,
       join_request: 1,
-      recovery_action: 1,
+      recovery_action: 2,
       productivity_review: 1,
       blocker_attention: 1,
       review: 2,
@@ -655,6 +655,14 @@ describeEmbeddedPostgres("attention service", () => {
       kind: "approval",
       approvalType: "hire_agent",
       summaryExcerpt: "Hire Designer",
+    });
+    expect(feed.items.find((item) =>
+      item.sourceKind === "recovery_action" && item.subject.title === "Agent should self-heal."
+    )).toMatchObject({
+      whyNow: "Recovery action is active with an agent owner and may need intervention.",
+      subject: expect.objectContaining({
+        metadata: expect.objectContaining({ ownerType: "agent" }),
+      }),
     });
     expect(feed.items.find((item) => item.sourceKind === "issue_thread_interaction")?.detail).toMatchObject({
       kind: "questions",

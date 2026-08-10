@@ -99,7 +99,7 @@ const SOURCE_RANK: Record<AttentionSourceKind, number> = {
 
 const PENDING_INTERACTION_STATUSES = ["pending"] as const;
 const OPEN_RECOVERY_STATUSES = ["active", "escalated"] as const;
-const HUMAN_RECOVERY_OWNER_TYPES = ["user", "board"] as const;
+const OPERATOR_VISIBLE_RECOVERY_OWNER_TYPES = ["agent", "user", "board"] as const;
 const PRODUCTIVITY_REVIEW_TERMINAL_STATUSES = ["done", "cancelled"] as const;
 const FAILED_RUN_STATUSES = ["failed", "timed_out"] as const;
 const DETAIL_EXCERPT_LENGTH = 160;
@@ -1324,7 +1324,7 @@ export function attentionService(db: Db, serviceOptions: AttentionServiceOptions
         .where(and(
           eq(issueRecoveryActions.companyId, companyId),
           inArray(issueRecoveryActions.status, [...OPEN_RECOVERY_STATUSES]),
-          inArray(issueRecoveryActions.ownerType, [...HUMAN_RECOVERY_OWNER_TYPES]),
+          inArray(issueRecoveryActions.ownerType, [...OPERATOR_VISIBLE_RECOVERY_OWNER_TYPES]),
         ))
         .orderBy(desc(issueRecoveryActions.updatedAt), desc(issueRecoveryActions.id));
       const [recoveryIssueMap, recoveryImageMap] = await Promise.all([
@@ -1361,16 +1361,18 @@ export function attentionService(db: Db, serviceOptions: AttentionServiceOptions
             },
           },
           whyNow: recovery.status === "escalated"
-            ? "Recovery action escalated to a human owner."
-            : "Recovery action is assigned to a human owner.",
+            ? "Recovery action escalated and still needs follow-through."
+            : recovery.ownerType === "agent"
+              ? "Recovery action is active with an agent owner and may need intervention."
+              : "Recovery action is waiting on operator follow-through.",
           decisionVerbs: decisionVerbs(
             { id: "resolve", label: "Resolve", description: "Record the recovery outcome." },
             { id: "reassign", label: "Reassign", description: "Move the recovery to another owner." },
             { id: "cancel", label: "Cancel", description: "Cancel the recovery action." },
           ),
           inlineResolvable: false,
-          entryRule: "issue_recovery_actions.status in ('active','escalated') and owner_type in ('user','board')",
-          exitRule: "Recovery action resolves, is cancelled, or moves back to an agent/system owner.",
+          entryRule: "issue_recovery_actions.status in ('active','escalated') and owner_type in ('agent','user','board')",
+          exitRule: "Recovery action resolves, is cancelled, or moves to a system-only owner.",
           dedupKey,
           severity: recovery.status === "escalated" ? "high" : "medium",
           activityAt: toIso(recovery.updatedAt),

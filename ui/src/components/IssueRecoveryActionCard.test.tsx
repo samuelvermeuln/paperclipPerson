@@ -266,6 +266,18 @@ describe("IssueRecoveryActionCard", () => {
     expect(node.textContent).toContain("Resolved as restored");
   });
 
+  it("shows a direct try-again button for missing-disposition style recoveries", () => {
+    const onResolve = vi.fn();
+    const node = render(
+      <IssueRecoveryActionCard action={buildAction()} onResolve={onResolve} />,
+    );
+
+    expect(node.querySelector("[data-testid='recovery-action-quick-retry']")?.textContent).toContain("Try again");
+    click(node.querySelector("[data-testid='recovery-action-quick-retry']"));
+
+    expect(onResolve).toHaveBeenCalledWith("todo");
+  });
+
   it("calls resolve with todo and does not offer delegated recovery", () => {
     const onResolve = vi.fn();
     const node = render(

@@ -56,7 +56,7 @@ export const instanceExperimentalSettingsSchema = z.object({
   enableBetaSkills: z.boolean().default(false),
   enableSummaries: z.boolean().default(false),
   enableStatusCards: z.boolean().default(false),
-  enableDecisions: z.boolean().default(false),
+  enableDecisions: z.boolean().default(true),
   enableGoalsSidebarLink: z.boolean().default(false),
   enableServerInfoDebugView: z.boolean().default(false),
   autoRestartDevServerWhenIdle: z.boolean().default(false),

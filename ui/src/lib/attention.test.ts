@@ -112,7 +112,7 @@ describe("isInlineResolvable", () => {
 });
 
 describe("attentionBadgeCount", () => {
-  it("uses the server's pre-pagination desk badge count", () => {
+  it("uses the server's company-wide active total count", () => {
     const feed: AttentionFeed = {
       companyId: "c1",
       generatedAt: "2026-07-09T12:00:00Z",
@@ -122,7 +122,7 @@ describe("attentionBadgeCount", () => {
       countsBySourceKind: {} as AttentionFeed["countsBySourceKind"],
       items: [buildItem({ id: "1" }), buildItem({ id: "2" }), buildItem({ id: "3" })],
     };
-    expect(attentionBadgeCount(feed)).toBe(2);
+    expect(attentionBadgeCount(feed)).toBe(3);
   });
 
   it("is zero for an empty or missing feed", () => {

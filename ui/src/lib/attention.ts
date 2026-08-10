@@ -263,13 +263,13 @@ export function attentionImageUrl(assetId: string): string {
 }
 
 /**
- * The sidebar badge: distinct items that either surfaced today or carry an
- * explicit decide-by deadline that is due today/past. The server computes this
- * before pagination (`deskBadgeCount`), so badge polling can fetch a small
- * first page without losing the company-wide signal.
+ * The sidebar badge: every currently active decision/approval/interaction that
+ * still needs operator attention. Use the server's company-wide `totalCount`
+ * instead of the narrower "new today / due now" desk badge so old-but-still-
+ * pending approvals never disappear from the nav.
  */
 export function attentionBadgeCount(feed: AttentionFeed | null | undefined): number {
-  return feed?.deskBadgeCount ?? 0;
+  return feed?.totalCount ?? 0;
 }
 
 // ---------------------------------------------------------------------------

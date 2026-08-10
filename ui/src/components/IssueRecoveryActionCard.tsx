@@ -1011,6 +1011,16 @@ export function IssueRecoveryActionCard({
     if (option.boardOnly && !canFalsePositive) return false;
     return true;
   });
+  const quickRetryKinds = new Set<IssueRecoveryActionKind>([
+    "missing_disposition",
+    "stranded_assigned_issue",
+    "issue_graph_liveness",
+  ]);
+  const quickRetryOption = visibleResolveOptions.find((option) => option.outcome === "todo") ?? null;
+  const showQuickRetry =
+    showResolveActions &&
+    quickRetryOption !== null &&
+    quickRetryKinds.has(action.kind);
   const reissueBaseRef = divergence?.reissueBaseRef ?? null;
   const showReissueAction =
     onReissueIsolated !== undefined &&
@@ -1175,13 +1185,26 @@ export function IssueRecoveryActionCard({
       {divergence ? <DivergenceDiagnosis divergence={divergence} dividerClass={tone.divider} /> : null}
       {showFooter ? (
         <div className={cn("flex flex-wrap items-center gap-2 border-t px-3 py-2.5 sm:px-4", tone.divider)}>
+          {showQuickRetry ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="default"
+              data-testid="recovery-action-quick-retry"
+              onClick={() => onResolve?.("todo")}
+              aria-label={translateRecoveryText(t, quickRetryOption?.label ?? "Try again")}
+            >
+              <RefreshCw className="h-3.5 w-3.5" aria-hidden />
+              {translateRecoveryText(t, quickRetryOption?.label ?? "Try again")}
+            </Button>
+          ) : null}
           {showResolveActions ? (
             <Popover>
               <PopoverTrigger asChild>
                 <Button
                   type="button"
                   size="sm"
-                  variant="default"
+                  variant={showQuickRetry ? "outline" : "default"}
                   data-testid="recovery-action-resolve-trigger"
                   aria-label={t("issueDetailPage.recoveryCard.actions.resolveRecovery")}
                 >
