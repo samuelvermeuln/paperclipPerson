@@ -12409,8 +12409,8 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
     return issuesSvc.listDependencyReadiness(companyId, issueIds);
   }
 
-  async function countRunningRunsForAgent(agentId: string) {
-    const [{ count }] = await db
+  async function countRunningRunsForAgent(agentId: string, dbOrTx: Db = db) {
+    const [{ count }] = await dbOrTx
       .select({ count: sql<number>`count(*)` })
       .from(heartbeatRuns)
       .where(and(eq(heartbeatRuns.agentId, agentId), eq(heartbeatRuns.status, "running")));
@@ -12425,8 +12425,22 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
     return `shared-adapter-queue:${companyId}:${adapterType}`;
   }
 
-  async function countRunningRunsForCompanyAdapter(companyId: string, adapterType: string) {
-    const [{ count }] = await db
+  function heartbeatStartLockKey(agentId: string) {
+    return `heartbeat-start:${agentId}`;
+  }
+
+  async function withHeartbeatSchedulingLock<T>(lockKeys: string[], run: (tx: Db) => Promise<T>) {
+    const uniqueLockKeys = [...new Set(lockKeys)].sort();
+    return db.transaction(async (tx) => {
+      for (const lockKey of uniqueLockKeys) {
+        await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))`);
+      }
+      return run(tx as unknown as Db);
+    });
+  }
+
+  async function countRunningRunsForCompanyAdapter(companyId: string, adapterType: string, dbOrTx: Db = db) {
+    const [{ count }] = await dbOrTx
       .select({ count: sql<number>`count(*)` })
       .from(heartbeatRuns)
       .innerJoin(agents, eq(heartbeatRuns.agentId, agents.id))
@@ -12458,7 +12472,11 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
     return started;
   }
 
-  async function claimQueuedRun(run: typeof heartbeatRuns.$inferSelect, companyAgents?: AgentOrgRow[]) {
+  async function claimQueuedRun(
+    run: typeof heartbeatRuns.$inferSelect,
+    companyAgents?: AgentOrgRow[],
+    dbOrTx: Db = db,
+  ) {
     if (run.status !== "queued") return run;
     const agent = await getAgent(run.agentId);
     if (!agent) {
@@ -12554,7 +12572,7 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
       issueContext: issueId ? await getIssueExecutionContext(run.companyId, issueId) : null,
       routineEnvContext: { routineId: null, env: null, responsibleUserId: null },
     });
-    const claimed = await db
+    const claimed = await dbOrTx
       .update(heartbeatRuns)
       .set({
         status: "running",
@@ -13886,84 +13904,97 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
     const queueLockKey = sharedAdapterQueueLimit(agent.adapterType) != null
       ? sharedAdapterQueueLockKey(agent.companyId, agent.adapterType)
       : null;
+    const schedulingLockKeys = [heartbeatStartLockKey(agentId), ...(queueLockKey ? [queueLockKey] : [])];
 
     const start = async () => {
-      const latestAgent = await getAgent(agentId);
-      if (!latestAgent) return [];
-      const invokability = await getAgentInvokability(latestAgent);
-      if (!invokability.invokable) {
-        if (shouldCancelRunsForNonInvokableAgent(invokability)) {
-          await cancelActiveForAgentInternal(agentId, `Cancelled because the agent is not invokable: ${invokability.reason}`);
+      const claimedRuns = await withHeartbeatSchedulingLock(schedulingLockKeys, async (lockedDb) => {
+        const latestAgent = await getAgent(agentId);
+        if (!latestAgent) return [] as Array<typeof heartbeatRuns.$inferSelect>;
+        const invokability = await getAgentInvokability(latestAgent);
+        if (!invokability.invokable) {
+          if (shouldCancelRunsForNonInvokableAgent(invokability)) {
+            await cancelActiveForAgentInternal(agentId, `Cancelled because the agent is not invokable: ${invokability.reason}`);
+          }
+          return [] as Array<typeof heartbeatRuns.$inferSelect>;
         }
-        return [];
-      }
-      const policy = parseHeartbeatPolicy(latestAgent);
-      const runningCount = await countRunningRunsForAgent(agentId);
-      let availableSlots = Math.max(0, policy.maxConcurrentRuns - runningCount);
-      if (availableSlots <= 0) return [];
+        const policy = parseHeartbeatPolicy(latestAgent);
+        const runningCount = await countRunningRunsForAgent(agentId, lockedDb);
+        let availableSlots = Math.max(0, policy.maxConcurrentRuns - runningCount);
+        const sharedQueueCap = sharedAdapterQueueLimit(latestAgent.adapterType);
+        let sharedRunningCount: number | null = null;
+        if (sharedQueueCap != null) {
+          sharedRunningCount = await countRunningRunsForCompanyAdapter(latestAgent.companyId, latestAgent.adapterType, lockedDb);
+          availableSlots = Math.min(availableSlots, Math.max(0, sharedQueueCap - sharedRunningCount));
+        }
+        logger.info({
+          agentId,
+          companyId: latestAgent.companyId,
+          adapterType: latestAgent.adapterType,
+          activeRunCount: runningCount,
+          maxConcurrentRuns: policy.maxConcurrentRuns,
+          sharedAdapterQueueCap: sharedQueueCap,
+          sharedActiveRunCount: sharedRunningCount,
+          decision: availableSlots > 0 ? "claim_queued_run" : "queue",
+        }, "Agent concurrency check");
+        if (availableSlots <= 0) return [] as Array<typeof heartbeatRuns.$inferSelect>;
 
-      const sharedQueueCap = sharedAdapterQueueLimit(latestAgent.adapterType);
-      if (sharedQueueCap != null) {
-        const sharedRunningCount = await countRunningRunsForCompanyAdapter(latestAgent.companyId, latestAgent.adapterType);
-        availableSlots = Math.min(availableSlots, Math.max(0, sharedQueueCap - sharedRunningCount));
-        if (availableSlots <= 0) return [];
-      }
+        const queuedRuns = await lockedDb
+          .select()
+          .from(heartbeatRuns)
+          .where(and(
+            eq(heartbeatRuns.agentId, agentId),
+            eq(heartbeatRuns.status, "queued"),
+            cutoff ? gte(heartbeatRuns.createdAt, cutoff) : undefined,
+          ))
+          .orderBy(asc(heartbeatRuns.createdAt));
+        if (queuedRuns.length === 0) return [] as Array<typeof heartbeatRuns.$inferSelect>;
 
-      const queuedRuns = await db
-        .select()
-        .from(heartbeatRuns)
-        .where(and(
-          eq(heartbeatRuns.agentId, agentId),
-          eq(heartbeatRuns.status, "queued"),
-          cutoff ? gte(heartbeatRuns.createdAt, cutoff) : undefined,
-        ))
-        .orderBy(asc(heartbeatRuns.createdAt));
-      if (queuedRuns.length === 0) return [];
+        const dependencyReadiness = await listQueuedRunDependencyReadiness(latestAgent.companyId, queuedRuns);
+        const queuedIssueIds = [...new Set(
+          queuedRuns
+            .map((run) => readNonEmptyString(parseObject(run.contextSnapshot).issueId))
+            .filter((issueId): issueId is string => Boolean(issueId)),
+        )];
+        const issueRows = await lockedDb
+          .select({
+            id: issues.id,
+            status: issues.status,
+            priority: issues.priority,
+          })
+          .from(issues)
+          .where(
+            queuedIssueIds.length > 0
+              ? and(eq(issues.companyId, latestAgent.companyId), inArray(issues.id, queuedIssueIds))
+              : sql`false`,
+          );
+        const issueById = new Map(issueRows.map((row) => [row.id, row]));
+        const companyAgents = await listCompanyAgentOrgRows(latestAgent.companyId);
+        const prioritizedRuns = [...queuedRuns].sort((left, right) => {
+          const leftIssueId = readNonEmptyString(parseObject(left.contextSnapshot).issueId);
+          const rightIssueId = readNonEmptyString(parseObject(right.contextSnapshot).issueId);
+          const leftReadiness = leftIssueId ? dependencyReadiness.get(leftIssueId) : null;
+          const rightReadiness = rightIssueId ? dependencyReadiness.get(rightIssueId) : null;
+          const leftReady = leftIssueId ? (leftReadiness?.isDependencyReady ?? true) : true;
+          const rightReady = rightIssueId ? (rightReadiness?.isDependencyReady ?? true) : true;
+          const leftIssue = leftIssueId ? issueById.get(leftIssueId) : null;
+          const rightIssue = rightIssueId ? issueById.get(rightIssueId) : null;
+          const leftRank = leftIssueId ? (leftReady ? (leftIssue?.status === "in_progress" ? 0 : 1) : 3) : 2;
+          const rightRank = rightIssueId ? (rightReady ? (rightIssue?.status === "in_progress" ? 0 : 1) : 3) : 2;
+          if (leftRank !== rightRank) return leftRank - rightRank;
+          const leftPriorityRank = issueRunPriorityRank(leftIssue?.priority);
+          const rightPriorityRank = issueRunPriorityRank(rightIssue?.priority);
+          if (leftPriorityRank !== rightPriorityRank) return leftPriorityRank - rightPriorityRank;
+          return left.createdAt.getTime() - right.createdAt.getTime();
+        });
 
-      const dependencyReadiness = await listQueuedRunDependencyReadiness(latestAgent.companyId, queuedRuns);
-      const queuedIssueIds = [...new Set(
-        queuedRuns
-          .map((run) => readNonEmptyString(parseObject(run.contextSnapshot).issueId))
-          .filter((issueId): issueId is string => Boolean(issueId)),
-      )];
-      const issueRows = await db
-        .select({
-          id: issues.id,
-          status: issues.status,
-          priority: issues.priority,
-        })
-        .from(issues)
-        .where(
-          queuedIssueIds.length > 0
-            ? and(eq(issues.companyId, latestAgent.companyId), inArray(issues.id, queuedIssueIds))
-            : sql`false`,
-        );
-      const issueById = new Map(issueRows.map((row) => [row.id, row]));
-      const companyAgents = await listCompanyAgentOrgRows(latestAgent.companyId);
-      const prioritizedRuns = [...queuedRuns].sort((left, right) => {
-        const leftIssueId = readNonEmptyString(parseObject(left.contextSnapshot).issueId);
-        const rightIssueId = readNonEmptyString(parseObject(right.contextSnapshot).issueId);
-        const leftReadiness = leftIssueId ? dependencyReadiness.get(leftIssueId) : null;
-        const rightReadiness = rightIssueId ? dependencyReadiness.get(rightIssueId) : null;
-        const leftReady = leftIssueId ? (leftReadiness?.isDependencyReady ?? true) : true;
-        const rightReady = rightIssueId ? (rightReadiness?.isDependencyReady ?? true) : true;
-        const leftIssue = leftIssueId ? issueById.get(leftIssueId) : null;
-        const rightIssue = rightIssueId ? issueById.get(rightIssueId) : null;
-        const leftRank = leftIssueId ? (leftReady ? (leftIssue?.status === "in_progress" ? 0 : 1) : 3) : 2;
-        const rightRank = rightIssueId ? (rightReady ? (rightIssue?.status === "in_progress" ? 0 : 1) : 3) : 2;
-        if (leftRank !== rightRank) return leftRank - rightRank;
-        const leftPriorityRank = issueRunPriorityRank(leftIssue?.priority);
-        const rightPriorityRank = issueRunPriorityRank(rightIssue?.priority);
-        if (leftPriorityRank !== rightPriorityRank) return leftPriorityRank - rightPriorityRank;
-        return left.createdAt.getTime() - right.createdAt.getTime();
+        const claimedRuns: Array<typeof heartbeatRuns.$inferSelect> = [];
+        for (const queuedRun of prioritizedRuns) {
+          if (claimedRuns.length >= availableSlots) break;
+          const claimed = await claimQueuedRun(queuedRun, companyAgents, lockedDb);
+          if (claimed) claimedRuns.push(claimed);
+        }
+        return claimedRuns;
       });
-
-      const claimedRuns: Array<typeof heartbeatRuns.$inferSelect> = [];
-      for (const queuedRun of prioritizedRuns) {
-        if (claimedRuns.length >= availableSlots) break;
-        const claimed = await claimQueuedRun(queuedRun, companyAgents);
-        if (claimed) claimedRuns.push(claimed);
-      }
       if (claimedRuns.length === 0) return [];
 
       for (const claimedRun of claimedRuns) {

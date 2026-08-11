@@ -69,7 +69,26 @@ async function waitForMicrotaskAssertion(assertion: () => void, attempts = 20) {
   throw lastError;
 }
 
-function createRun(index: number) {
+function createRun(index: number, overrides: Partial<ReturnType<typeof createRunBase>> = {}) {
+  return {
+    ...createRunBase(index),
+    ...overrides,
+  };
+}
+
+function createRunBase(index: number): {
+  id: string;
+  status: string;
+  invocationSource: string;
+  triggerDetail: string | null;
+  startedAt: string | null;
+  finishedAt: string | null;
+  createdAt: string;
+  agentId: string;
+  agentName: string;
+  adapterType: string;
+  issueId: string | null;
+} {
   return {
     id: `run-${index}`,
     status: "running",
@@ -122,7 +141,7 @@ describe("ActiveAgentsPanel", () => {
   beforeEach(() => {
     container = document.createElement("div");
     document.body.appendChild(container);
-    mockHeartbeatsApi.liveRunsForCompany.mockResolvedValue([1, 2, 3, 4, 5].map(createRun));
+    mockHeartbeatsApi.liveRunsForCompany.mockResolvedValue([1, 2, 3, 4, 5].map((index) => createRun(index)));
     mockIssuesApi.get.mockRejectedValue(new Error("Issue not found"));
   });
 
@@ -189,6 +208,39 @@ describe("ActiveAgentsPanel", () => {
       limit: 50,
     });
     expect(container.textContent).not.toContain("more active/recent");
+
+    await act(async () => {
+      root.unmount();
+    });
+  });
+
+  it("shows queued runs as waiting for an agent slot when same agent already has a running run", async () => {
+    mockHeartbeatsApi.liveRunsForCompany.mockResolvedValue([
+      createRun(1, { agentId: "agent-shared", agentName: "Agent Shared", status: "running" }),
+      createRun(2, {
+        agentId: "agent-shared",
+        agentName: "Agent Shared",
+        status: "queued",
+        startedAt: null,
+      }),
+    ]);
+
+    const root = createRoot(container);
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+
+    await act(async () => {
+      root.render(
+        <QueryClientProvider client={queryClient}>
+          <ActiveAgentsPanel companyId="company-1" />
+        </QueryClientProvider>,
+      );
+    });
+    await flushReact();
+
+    expect(container.textContent).toContain("Queued — waiting for agent slot");
+    expect(container.textContent).toContain("Running now");
 
     await act(async () => {
       root.unmount();

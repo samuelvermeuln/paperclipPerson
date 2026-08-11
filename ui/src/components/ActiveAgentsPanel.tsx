@@ -56,8 +56,12 @@ function isRunRunning(run: LiveRunForIssue): boolean {
   return run.status === "running";
 }
 
-function activeRunLabel(run: LiveRunForIssue): string {
-  if (run.status === "queued") return "Queued";
+function activeRunLabel(run: LiveRunForIssue, options: { waitingForAgentSlot?: boolean } = {}): string {
+  if (run.status === "queued") {
+    return options.waitingForAgentSlot
+      ? "Queued — waiting for agent slot"
+      : "Queued — waiting to start";
+  }
   if (run.status === "running") return "Running now";
   if (run.finishedAt) return `Finished ${relativeTime(run.finishedAt)}`;
   return `Started ${relativeTime(run.createdAt)}`;
@@ -106,6 +110,10 @@ export function ActiveAgentsPanel({
   const runs = liveRuns ?? [];
   const visibleRuns = useMemo(() => runs.slice(0, cardLimit), [cardLimit, runs]);
   const hiddenRunCount = Math.max(0, runs.length - visibleRuns.length);
+  const agentIdsWithRunningRun = useMemo(
+    () => new Set(runs.filter((run) => run.status === "running").map((run) => run.agentId)),
+    [runs],
+  );
   const visibleIssueIds = useMemo(
     () => [...new Set(visibleRuns.map((run) => run.issueId).filter((issueId): issueId is string => Boolean(issueId)))],
     [visibleRuns],
@@ -158,6 +166,7 @@ export function ActiveAgentsPanel({
               transcript={transcriptByRun.get(run.id) ?? EMPTY_TRANSCRIPT}
               hasOutput={hasOutputForRun(run.id)}
               isActive={isRunActive(run)}
+              waitingForAgentSlot={run.status === "queued" && agentIdsWithRunningRun.has(run.agentId)}
               className={cardClassName}
             />
           ))}
@@ -181,6 +190,7 @@ const AgentRunCard = memo(function AgentRunCard({
   transcript,
   hasOutput,
   isActive,
+  waitingForAgentSlot,
   className,
 }: {
   companyId: string;
@@ -189,6 +199,7 @@ const AgentRunCard = memo(function AgentRunCard({
   transcript: TranscriptEntry[];
   hasOutput: boolean;
   isActive: boolean;
+  waitingForAgentSlot: boolean;
   className?: string;
 }) {
   const isRunning = isRunRunning(run);
@@ -218,7 +229,7 @@ const AgentRunCard = memo(function AgentRunCard({
               <Identity name={run.agentName} size="sm" className="[&>span:last-child]:!text-(length:--text-micro)" />
             </div>
             <div className="mt-2 flex items-center gap-2 text-(length:--text-micro) text-muted-foreground">
-              <span>{activeRunLabel(run)}</span>
+              <span>{activeRunLabel(run, { waitingForAgentSlot })}</span>
             </div>
           </div>
 
