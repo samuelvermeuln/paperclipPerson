@@ -447,6 +447,10 @@ const SILENT_RUN_AUTO_TIMEOUT_ADAPTER_TYPES = new Set([
 ]);
 export const MAX_TURN_CONTINUATION_RETRY_REASON = "max_turns_continuation";
 export const MAX_TURN_CONTINUATION_WAKE_REASON = "max_turns_continuation_retry";
+export const AGENT_CONCURRENCY_CAP_RETRY_REASON = "agent_concurrency_cap";
+export const AGENT_CONCURRENCY_CAP_WAKE_REASON = "agent_concurrency_cap_retry";
+export const AGENT_CONCURRENCY_CAP_ERROR_CODE = "agent_concurrency_cap";
+const AGENT_CONCURRENCY_CAP_RETRY_DELAY_MS = 1_000;
 const MAX_TURN_CONTINUATION_DEFAULT_MAX_ATTEMPTS = 2;
 const MAX_TURN_CONTINUATION_MAX_ATTEMPTS_CAP = 10;
 const MAX_TURN_CONTINUATION_DEFAULT_DELAY_MS = 1_000;
@@ -12472,6 +12476,161 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
     return started;
   }
 
+  async function collapseDuplicateStaleRunEvaluationIssues() {
+    const openEvaluations = await db
+      .select({
+        id: issues.id,
+        companyId: issues.companyId,
+        identifier: issues.identifier,
+        originId: issues.originId,
+        createdAt: issues.createdAt,
+      })
+      .from(issues)
+      .where(and(
+        eq(issues.originKind, RECOVERY_ORIGIN_KINDS.staleActiveRunEvaluation),
+        visibleIssueCondition(),
+        notInArray(issues.status, ["done", "cancelled"]),
+      ))
+      .orderBy(asc(issues.createdAt), asc(issues.id));
+
+    const grouped = new Map<string, Array<typeof openEvaluations[number]>>();
+    for (const issue of openEvaluations) {
+      const sourceRunId = readNonEmptyString(issue.originId);
+      if (!sourceRunId) continue;
+      const key = `${issue.companyId}:${sourceRunId}`;
+      const existing = grouped.get(key);
+      if (existing) existing.push(issue);
+      else grouped.set(key, [issue]);
+    }
+
+    const cancelledIssueIds: string[] = [];
+    for (const duplicates of grouped.values()) {
+      if (duplicates.length <= 1) continue;
+      const [, ...superseded] = duplicates;
+      for (const duplicate of superseded) {
+        await issuesSvc.update(duplicate.id, { status: "cancelled" });
+        cancelledIssueIds.push(duplicate.id);
+      }
+    }
+
+    return {
+      cancelled: cancelledIssueIds.length,
+      cancelledIssueIds,
+    };
+  }
+
+  async function reconcileAgentConcurrencyViolations() {
+    const duplicateEvaluations = await collapseDuplicateStaleRunEvaluationIssues();
+    const runningRunIssueId = sql<string | null>`${heartbeatRuns.contextSnapshot} ->> 'issueId'`;
+    const runningRows = await db
+      .select({
+        run: heartbeatRuns,
+        agent: agents,
+        issueId: issues.id,
+        issueStatus: issues.status,
+        issueOriginKind: issues.originKind,
+        issueOriginId: issues.originId,
+      })
+      .from(heartbeatRuns)
+      .innerJoin(agents, eq(heartbeatRuns.agentId, agents.id))
+      .leftJoin(
+        issues,
+        and(
+          eq(issues.companyId, heartbeatRuns.companyId),
+          sql`${issues.id}::text = ${runningRunIssueId}`,
+        ),
+      )
+      .where(eq(heartbeatRuns.status, "running"));
+
+    const rowsByAgent = new Map<string, typeof runningRows>();
+    for (const row of runningRows) {
+      const existing = rowsByAgent.get(row.run.agentId);
+      if (existing) existing.push(row);
+      else rowsByAgent.set(row.run.agentId, [row]);
+    }
+
+    let cancelledRuns = 0;
+    let retriesQueued = 0;
+    const affectedAgentIds = new Set<string>();
+    for (const rows of rowsByAgent.values()) {
+      const agent = rows[0]?.agent;
+      if (!agent) continue;
+      const policy = parseHeartbeatPolicy(agent);
+      if (rows.length <= policy.maxConcurrentRuns) continue;
+
+      const ranked = [...rows].sort((left, right) => {
+        const leftOriginPriority =
+          left.issueOriginKind === RECOVERY_ORIGIN_KINDS.staleActiveRunEvaluation
+            ? 2
+            : left.issueOriginKind
+              ? 1
+              : 0;
+        const rightOriginPriority =
+          right.issueOriginKind === RECOVERY_ORIGIN_KINDS.staleActiveRunEvaluation
+            ? 2
+            : right.issueOriginKind
+              ? 1
+              : 0;
+        if (leftOriginPriority !== rightOriginPriority) return leftOriginPriority - rightOriginPriority;
+
+        const leftLivePriority = liveRunExecutions.has(left.run.id) ? 0 : 1;
+        const rightLivePriority = liveRunExecutions.has(right.run.id) ? 0 : 1;
+        if (leftLivePriority !== rightLivePriority) return leftLivePriority - rightLivePriority;
+
+        const leftStartedAt = left.run.startedAt ?? left.run.createdAt;
+        const rightStartedAt = right.run.startedAt ?? right.run.createdAt;
+        return leftStartedAt.getTime() - rightStartedAt.getTime();
+      });
+
+      const excessRuns = ranked.slice(policy.maxConcurrentRuns);
+      if (excessRuns.length === 0) continue;
+      affectedAgentIds.add(agent.id);
+
+      for (const excess of excessRuns) {
+        const issueTerminal = excess.issueStatus === "done" || excess.issueStatus === "cancelled";
+        const cancelReason = `Cancelled because agent ${agent.name} exceeded concurrency cap ${policy.maxConcurrentRuns}; another run already holds the slot`;
+        const cancelledRun = await cancelRunInternal(excess.run.id, cancelReason, {
+          errorCode: AGENT_CONCURRENCY_CAP_ERROR_CODE,
+          eventMessage: issueTerminal
+            ? "run cancelled because its agent exceeded the concurrency cap and its source issue was already terminal"
+            : "run cancelled because its agent exceeded the concurrency cap; Paperclip will retry once the slot is free",
+          eventPayload: {
+            maxConcurrentRuns: policy.maxConcurrentRuns,
+            agentId: agent.id,
+          },
+        }).catch((error) => {
+          logger.error({ err: error, runId: excess.run.id, agentId: agent.id }, "failed to cancel over-cap running heartbeat run");
+          return null;
+        });
+        if (!cancelledRun) continue;
+        cancelledRuns += 1;
+
+        if (issueTerminal) continue;
+        const scheduleResult = await scheduleBoundedRetryForRun(cancelledRun, agent, {
+          now: new Date(),
+          retryReason: AGENT_CONCURRENCY_CAP_RETRY_REASON,
+          wakeReason: AGENT_CONCURRENCY_CAP_WAKE_REASON,
+          maxAttempts: (cancelledRun.scheduledRetryAttempt ?? 0) + 1,
+          delayMs: AGENT_CONCURRENCY_CAP_RETRY_DELAY_MS,
+        }).catch((error) => {
+          logger.error({ err: error, runId: excess.run.id, agentId: agent.id }, "failed to queue retry for over-cap heartbeat run");
+          return null;
+        });
+        if (scheduleResult?.outcome === "scheduled") {
+          retriesQueued += 1;
+        }
+      }
+    }
+
+    return {
+      duplicateEvaluationIssuesCancelled: duplicateEvaluations.cancelled,
+      duplicateEvaluationIssueIds: duplicateEvaluations.cancelledIssueIds,
+      cancelledRuns,
+      retriesQueued,
+      affectedAgentIds: [...affectedAgentIds],
+    };
+  }
+
   async function claimQueuedRun(
     run: typeof heartbeatRuns.$inferSelect,
     companyAgents?: AgentOrgRow[],
@@ -19472,6 +19631,7 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
     },
 
     reconcileStrandedAssignedIssues,
+    reconcileAgentConcurrencyViolations,
 
     terminalizeRunOnLeaseRelease,
 

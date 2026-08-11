@@ -1065,6 +1065,11 @@ export async function startServer(): Promise<StartedServer> {
           }
         }
 
+        const concurrencyReconciled = await heartbeat.reconcileAgentConcurrencyViolations();
+        if (concurrencyReconciled.duplicateEvaluationIssuesCancelled > 0 || concurrencyReconciled.cancelledRuns > 0 || concurrencyReconciled.retriesQueued > 0) {
+          logger.warn({ ...concurrencyReconciled }, "startup agent-concurrency reconciliation collapsed duplicate recovery work or cancelled over-cap runs");
+        }
+
         const promotion = await heartbeat.promoteDueScheduledRetries();
         await heartbeat.resumeQueuedRuns();
         const reconciled = await heartbeat.reconcileStrandedAssignedIssues();
@@ -1273,6 +1278,10 @@ export async function startServer(): Promise<StartedServer> {
                 logger.warn({ ...timedOut }, "periodic silent-run timeout watchdog terminalized active runs");
               } else if (timedOut.suspicious > 0) {
                 logger.warn({ ...timedOut }, "periodic silent-run watchdog marked active runs suspicious but held off termination");
+              }
+              const concurrencyReconciled = await heartbeat.reconcileAgentConcurrencyViolations();
+              if (concurrencyReconciled.duplicateEvaluationIssuesCancelled > 0 || concurrencyReconciled.cancelledRuns > 0 || concurrencyReconciled.retriesQueued > 0) {
+                logger.warn({ ...concurrencyReconciled }, "periodic agent-concurrency reconciliation collapsed duplicate recovery work or cancelled over-cap runs");
               }
               return heartbeat.promoteDueScheduledRetries();
             })
