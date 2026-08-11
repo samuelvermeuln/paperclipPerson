@@ -1134,7 +1134,8 @@ Per-agent schedule fields in `adapter_config`:
 
 - `enabled` boolean
 - `intervalSec` integer (minimum 30)
-- `maxConcurrentRuns` integer; new agents default to `20`; scheduler clamps configured values to `1..50`
+- `maxConcurrentRuns` integer; new agents default to `1`; scheduler clamps configured values to `1..50`
+- local/session adapters run serialized by default even when a larger value is configured; set `heartbeat.allowParallelRuns: true` only when intentional parallelism is safe
 
 Scheduler must skip invocation when:
 

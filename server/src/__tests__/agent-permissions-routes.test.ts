@@ -989,7 +989,7 @@ describe.sequential("agent permission routes", () => {
           heartbeat: {
             enabled: false,
             intervalSec: 3600,
-            maxConcurrentRuns: 20,
+            maxConcurrentRuns: 1,
           },
           modelProfiles: {
             cheap: { enabled: false },
@@ -1048,7 +1048,7 @@ describe.sequential("agent permission routes", () => {
           runtimeConfig: {
             heartbeat: {
               enabled: false,
-              maxConcurrentRuns: 20,
+              maxConcurrentRuns: 1,
             },
             modelProfiles: {
               cheap: {
@@ -1167,7 +1167,7 @@ describe.sequential("agent permission routes", () => {
           heartbeat: {
             enabled: false,
             intervalSec: 3600,
-            maxConcurrentRuns: 20,
+            maxConcurrentRuns: 1,
           },
           modelProfiles: {
             cheap: { enabled: false },

@@ -437,6 +437,7 @@ const GIT_SENSITIVE_LOCAL_ADAPTER_TYPES = new Set([
   "opencode_9router",
   "pi_local",
 ]);
+const SERIAL_HEARTBEAT_ADAPTER_TYPES = new Set(GIT_SENSITIVE_LOCAL_ADAPTER_TYPES);
 const SHARED_ADAPTER_QUEUE_LIMITS = new Map<string, number>([
   ["opencode_9router", 1],
 ]);
@@ -12152,12 +12153,21 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
   function parseHeartbeatPolicy(agent: typeof agents.$inferSelect) {
     const runtimeConfig = parseObject(agent.runtimeConfig);
     const heartbeat = parseObject(runtimeConfig.heartbeat);
+    const allowParallelRuns = asBoolean(
+      heartbeat.allowParallelRuns ?? heartbeat.parallelRunsEnabled,
+      false,
+    );
+    const configuredMaxConcurrentRuns = normalizeMaxConcurrentRuns(heartbeat.maxConcurrentRuns);
+    const maxConcurrentRuns =
+      !allowParallelRuns && SERIAL_HEARTBEAT_ADAPTER_TYPES.has(agent.adapterType)
+        ? 1
+        : configuredMaxConcurrentRuns;
 
     return {
       enabled: asBoolean(heartbeat.enabled, false),
       intervalSec: Math.max(0, asNumber(heartbeat.intervalSec, 0)),
       wakeOnDemand: asBoolean(heartbeat.wakeOnDemand ?? heartbeat.wakeOnAssignment ?? heartbeat.wakeOnOnDemand ?? heartbeat.wakeOnAutomation, true),
-      maxConcurrentRuns: normalizeMaxConcurrentRuns(heartbeat.maxConcurrentRuns),
+      maxConcurrentRuns,
       skipTimerWhenNoActionableWork: asBoolean(
         heartbeat.skipTimerWhenNoActionableWork ??
           heartbeat.requireActionableTimerWork ??
