@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { AppWindow, ShieldAlert, ShieldQuestion } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { AppWindow, Loader2, ShieldAlert, ShieldQuestion, Trash2 } from "lucide-react";
 import type {
   ToolApplication,
   ToolConnection,
@@ -13,9 +13,20 @@ import {
 import { useNavigate } from "@/lib/router";
 import { useCompany } from "@/context/CompanyContext";
 import { useBreadcrumbs } from "@/context/BreadcrumbContext";
+import { useToast } from "@/context/ToastContext";
 import { useTranslation } from "@/i18n";
 import { queryKeys } from "@/lib/queryKeys";
 import { toolsApi } from "@/api/tools";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -30,7 +41,7 @@ import {
 import { useReviewCount } from "./useReviewCount";
 import { AdvancedToolsLink } from "./store-cards";
 
-const BROWSE_HREF = "/apps/browse";
+const BROWSE_HREF = "/apps";
 
 type StatusFilter = "all" | "attention";
 
@@ -43,6 +54,8 @@ type AppStatus = {
 type AppRow = {
   application: ToolApplication;
   primaryConnection: ToolConnection | null;
+  connectionCount: number;
+  agentAvailableConnectionCount: number;
   status: AppStatus;
   actionCount: number;
   lastUsedAt: Date | string | null;
@@ -85,11 +98,18 @@ const STATUS_CLASS: Record<AppStatusTone, string> = {
 
 export function Connections() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { pushToast } = useToast();
   const { selectedCompany, selectedCompanyId } = useCompany();
   const { setBreadcrumbs } = useBreadcrumbs();
   const { t } = useTranslation();
   const reviewCount = useReviewCount();
   const [filter, setFilter] = useState<StatusFilter>("all");
+  const [connectionToDelete, setConnectionToDelete] = useState<{
+    id: string;
+    appName: string;
+    remainingConnectionCount: number;
+  } | null>(null);
 
   useEffect(() => {
     setBreadcrumbs([
@@ -119,6 +139,30 @@ export function Connections() {
     queryKey: queryKeys.tools.profiles(selectedCompanyId ?? "__none__"),
     queryFn: () => toolsApi.listProfiles(selectedCompanyId!),
     enabled: !!selectedCompanyId,
+  });
+
+  const deleteConnection = useMutation({
+    mutationFn: (target: { id: string; appName: string; remainingConnectionCount: number }) =>
+      toolsApi.archiveConnection(target.id),
+    onSuccess: (_connection, target) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.tools.connections(selectedCompanyId!) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tools.applications(selectedCompanyId!) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.apps.attention(selectedCompanyId!) });
+      pushToast({
+        title: "Connection deleted",
+        body: target.remainingConnectionCount > 0
+          ? `${target.appName} still has ${target.remainingConnectionCount} active ${target.remainingConnectionCount === 1 ? "connection" : "connections"} available to agents.`
+          : `${target.appName} is no longer available to agents. You can connect it again later.`,
+        tone: "success",
+      });
+      setConnectionToDelete(null);
+    },
+    onError: (error) =>
+      pushToast({
+        title: "Couldn't delete the connection",
+        body: error instanceof Error ? error.message : "Please try again.",
+        tone: "error",
+      }),
   });
 
   const gallery = (galleryQuery.data?.apps ?? []) as AppGalleryDisplayEntry[];
@@ -178,6 +222,10 @@ export function Connections() {
       return {
         application,
         primaryConnection,
+        connectionCount: appConnections.length,
+        agentAvailableConnectionCount: appConnections.filter(
+          (connection) => connection.status === "active" && connection.enabled,
+        ).length,
         status: statusFor(application, appConnections),
         actionCount,
         lastUsedAt,
@@ -319,21 +367,28 @@ export function Connections() {
                   const attention = rowNeedsAttention(row);
                   const hint =
                     status.tone === "attention"
-                      ? t("apps.connections.hints.attention", {
-                        defaultValue: "The key stopped working — reconnect to fix.",
-                      })
+                      ? primaryConnection?.authKind === "oauth"
+                        ? t("apps.connections.hints.oauthReconnect", {
+                            defaultValue: "Reconnect required — sign in again to restore access.",
+                          })
+                        : t("apps.connections.hints.attention", {
+                            defaultValue: "The key stopped working — reconnect to fix.",
+                          })
                       : status.tone === "paused"
                         ? t("apps.connections.hints.paused", {
-                          defaultValue: "Paused — agents can’t use it right now.",
-                        })
+                            defaultValue: "Paused — agents can’t use it right now.",
+                          })
                         : status.tone === "not_connected"
                           ? t("apps.connections.hints.notConnected", {
-                            defaultValue: "Connect it so agents can use it.",
-                          })
-                          : null;
-                  const appHref = primaryConnection
-                    ? `/apps/${primaryConnection.id}`
-                    : `/apps/app/${application.id}`;
+                              defaultValue: "Connect it so agents can use it.",
+                            })
+                          : row.connectionCount > 1
+                            ? t("apps.connections.hints.connectionCount", {
+                                defaultValue: "{{count}} connections",
+                                count: row.connectionCount,
+                              })
+                            : null;
+                  const appHref = `/apps/app/${application.id}/setup`;
                   const actionLabel = !primaryConnection
                     ? t("common.actions.connect", { defaultValue: "Connect" })
                     : status.tone === "attention"
@@ -392,16 +447,40 @@ export function Connections() {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <Button
-                          variant={attention ? "default" : "outline"}
-                          size="sm"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            navigate(appHref);
-                          }}
-                        >
-                          {actionLabel}
-                        </Button>
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant={attention ? "default" : "outline"}
+                            size="sm"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              navigate(appHref);
+                            }}
+                          >
+                            {actionLabel}
+                          </Button>
+                          {primaryConnection && (
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              className="text-muted-foreground hover:text-destructive"
+                              aria-label={`Delete ${application.name} connection`}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setConnectionToDelete({
+                                  id: primaryConnection.id,
+                                  appName: application.name,
+                                  remainingConnectionCount: Math.max(
+                                    0,
+                                    row.agentAvailableConnectionCount -
+                                      (primaryConnection.status === "active" && primaryConnection.enabled ? 1 : 0),
+                                  ),
+                                });
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -420,6 +499,40 @@ export function Connections() {
           </div>
         </div>
       )}
+
+      <AlertDialog
+        open={connectionToDelete !== null}
+        onOpenChange={(open) => {
+          if (!open && !deleteConnection.isPending) setConnectionToDelete(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Delete {connectionToDelete?.appName ?? "this"} connection?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {connectionToDelete && connectionToDelete.remainingConnectionCount > 0
+                ? `This connection will be removed. Agents can still use ${connectionToDelete.appName} through ${connectionToDelete.remainingConnectionCount} other active ${connectionToDelete.remainingConnectionCount === 1 ? "connection" : "connections"}.`
+                : "Agents will lose access immediately. You can connect it again later."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteConnection.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={!connectionToDelete || deleteConnection.isPending}
+              onClick={(event) => {
+                event.preventDefault();
+                if (connectionToDelete) deleteConnection.mutate(connectionToDelete);
+              }}
+            >
+              {deleteConnection.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+              {deleteConnection.isPending ? "Deleting..." : "Delete connection"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

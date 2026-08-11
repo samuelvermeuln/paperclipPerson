@@ -1,13 +1,17 @@
 import { describe, expect, it, vi } from "vitest";
 import type { AdapterRuntimeEvent } from "../types.js";
-import type { StartupSpan, StartupTracer } from "./startup-timing.js";
+import type { StartupSpan, StartupTraceContext, StartupTracer } from "./startup-timing.js";
 import {
   clampSpanLabel,
+  createRuntimeSpanRunner,
   emitSkippedStartupStep,
   getActiveStepContext,
   measureStartupStep,
+  NOOP_STARTUP_SPAN,
+  NOOP_STARTUP_TRACE_CONTEXT,
   normalizeProviderFamily,
   runWithoutActiveStep,
+  runWithRuntimeParent,
   SANDBOX_STARTUP_SPAN_ATTR_PREFIX,
   SANDBOX_STARTUP_SPAN_ATTRS,
   setSandboxRootSpanAttributes,
@@ -578,6 +582,41 @@ describe("getActiveStepContext", () => {
   });
 });
 
+describe("runWithRuntimeParent", () => {
+  it("sets the parent context so inner code parents to the given token", () => {
+    // The server builds an opaque parent-context token from a run-time span. The
+    // helper publishes it, so inner code reads it through the getter and parents
+    // a child span to that token. Model the token as a plain object; the helper
+    // forwards it opaque.
+    const token = { span: "runtime-parent" };
+    const seen = runWithRuntimeParent(token, () => getActiveStepContext());
+
+    expect(seen).not.toBeNull();
+    // The published parent token is the given token, unchanged.
+    expect(seen!.parentContext).toBe(token);
+    // The helper stores the no-op span, not a real step span.
+    expect(seen!.span).toBe(NOOP_STARTUP_SPAN);
+    // A run-time exec is not on the startup critical path.
+    expect(seen!.criticalPath).toBe(false);
+    // The context clears once the work settles.
+    expect(getActiveStepContext()).toBeNull();
+  });
+
+  it("empties the store when the token is undefined, like runWithoutActiveStep", () => {
+    // A missing token means no run-time parent. The helper then empties the
+    // store, so inner code reads no active step and opens an unparented span.
+    const seen = runWithRuntimeParent(undefined, () => getActiveStepContext());
+
+    expect(seen).toBeNull();
+    expect(getActiveStepContext()).toBeNull();
+  });
+
+  it("returns the work result", () => {
+    const value = runWithRuntimeParent({ span: "runtime-parent" }, () => "value");
+    expect(value).toBe("value");
+  });
+});
+
 describe("clampSpanLabel", () => {
   it("returns a known command label unchanged and maps an unknown command to `other`", () => {
     expect(clampSpanLabel("command", "sh")).toBe("sh");
@@ -614,5 +653,62 @@ describe("clampSpanLabel", () => {
   it("drops an unknown label name so the caller sets no attribute for it", () => {
     expect(clampSpanLabel("nonsense", "anything")).toBeUndefined();
     expect(clampSpanLabel("stdout", "secret output")).toBeUndefined();
+  });
+});
+
+describe("createRuntimeSpanRunner", () => {
+  it("opens a named wrapper span and parents the wrapped work to it", async () => {
+    const { tracer, spans } = makeMockTracer();
+    const runParent = { marker: "run-parent" };
+    const traceContext: StartupTraceContext = {
+      tracer,
+      contextWithSpan: (span) => ({ span }),
+    };
+    const run = createRuntimeSpanRunner(traceContext, () => runParent);
+
+    let childParent: unknown = "unset";
+    const result = await run("sandbox.agentSession.sendInput", async () => {
+      childParent = getActiveStepContext()?.parentContext;
+      return "ok";
+    });
+
+    expect(result).toBe("ok");
+    expect(spans).toHaveLength(1);
+    expect(spans[0]!.name).toBe("sandbox.agentSession.sendInput");
+    expect(spans[0]!.endCount).toBe(1);
+    // The wrapped work parents to the wrapper span, not straight to the run
+    // parent, so the inner exec spans group under the wrapper span.
+    expect((childParent as { span?: unknown }).span).toBe(spans[0]);
+  });
+
+  it("marks the wrapper span failed and ends it when the work throws", async () => {
+    const { tracer, spans } = makeMockTracer();
+    const traceContext: StartupTraceContext = {
+      tracer,
+      contextWithSpan: (span) => ({ span }),
+    };
+    const run = createRuntimeSpanRunner(traceContext, () => ({ marker: "run-parent" }));
+
+    await expect(
+      run("sandbox.callbackBridge.relayRequest", async () => {
+        throw new Error("boom");
+      }),
+    ).rejects.toThrow(/boom/);
+    expect(spans).toHaveLength(1);
+    expect(spans[0]!.status?.code).toBe(2);
+    expect(spans[0]!.endCount).toBe(1);
+  });
+
+  it("runs the work unwrapped under a no-op trace context", async () => {
+    const run = createRuntimeSpanRunner(NOOP_STARTUP_TRACE_CONTEXT, () => ({ marker: "run-parent" }));
+    // The no-op `contextWithSpan` yields no child token, so the store empties for
+    // the work, exactly like the earlier unparented run-time behavior.
+    let childStep: unknown = "unset";
+    const result = await run("sandbox.agentSession.pollOutput", async () => {
+      childStep = getActiveStepContext();
+      return 7;
+    });
+    expect(result).toBe(7);
+    expect(childStep).toBeNull();
   });
 });

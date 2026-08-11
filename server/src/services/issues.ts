@@ -94,7 +94,7 @@ import { resolveIssueGoalId, resolveNextIssueGoalId } from "./issue-goal-fallbac
 import { getRunLogStore } from "./run-log-store.js";
 import { getDefaultCompanyGoal } from "./goals.js";
 import { assertAssignableAgent } from "./agent-assignability.js";
-import { insertRowsInChunks } from "./batch-insert.js";
+import { DEFAULT_INSERT_CHUNK_ROWS, insertRowsInChunks } from "./batch-insert.js";
 import type {
   ImportIssueRow,
   ImportIssueCommentRow,
@@ -3102,6 +3102,7 @@ const issueListSelect = {
   workMode: issues.workMode,
   harnessKind: issues.harnessKind,
   priority: issues.priority,
+  reviewPolicy: issues.reviewPolicy,
   assigneeAgentId: issues.assigneeAgentId,
   assigneeUserId: issues.assigneeUserId,
   checkoutRunId: issues.checkoutRunId,
@@ -3891,7 +3892,7 @@ async function listIssueBlockedInboxAttentionMap(
     const source = issueRef(row);
     const handoff = handoffMap.get(row.id);
     const hasLiveHandoffContinuation = Boolean(
-      handoff?.state === "required"
+      (handoff?.state === "required" || handoff?.state === "escalated")
       && (liveHandoffRunIssueIds.has(row.id) || liveHandoffWakeIssueIds.has(row.id))
     );
     if (handoff && !hasLiveHandoffContinuation && (handoff.required || handoff.state === "escalated")) {
@@ -7351,9 +7352,19 @@ export function issueService(db: Db) {
             responsibleUserId: null,
             requestDepth: clampIssueRequestDepth(undefined),
             originKind: "manual",
-            startedAt: row.status === "in_progress" ? new Date() : null,
-            completedAt: row.status === "done" ? new Date() : null,
-            cancelledAt: row.status === "cancelled" ? new Date() : null,
+            // The caller resolves parentId against ids in this same batch, so a
+            // parent always lands in the same insert (rows arrive parents-first).
+            parentId: row.parentId ?? null,
+            // Preserved bundle timestamps win; without them createdAt/updatedAt
+            // fall back to the insert time (the old defaultNow() behavior).
+            createdAt: row.createdAt ?? new Date(),
+            updatedAt: row.updatedAt ?? new Date(),
+            // Imported in-progress work did not start at import time; fabricating
+            // startedAt here trips duration-based sweeps (e.g. productivity
+            // review). Only a bundle-carried startedAt is written.
+            startedAt: row.startedAt ?? null,
+            completedAt: row.completedAt ?? (row.status === "done" ? new Date() : null),
+            cancelledAt: row.cancelledAt ?? (row.status === "cancelled" ? new Date() : null),
             monitorNotes: row.monitorNotes ?? null,
             monitorScheduledBy: row.monitorScheduledBy ?? null,
           });
@@ -7393,10 +7404,28 @@ export function issueService(db: Db) {
           };
         });
         await insertRowsInChunks(tx, issueComments, commentRows);
-        // Mirror addComment's recency bump, once per affected issue.
-        const issueIds = [...new Set(rows.map((row) => row.issueId))];
-        if (issueIds.length > 0) {
-          await tx.update(issues).set({ updatedAt: new Date() }).where(inArray(issues.id, issueIds));
+        // Mirror addComment's recency bump, once per affected issue — but never
+        // backwards. An issue imported with a preserved updatedAt keeps it
+        // unless a newer imported comment outdates it; issues without preserved
+        // timestamps carry an insert-time updatedAt, so GREATEST reproduces the
+        // old "bump to now" behavior for them.
+        const bumpAtByIssueId = new Map<string, Date>();
+        for (const row of commentRows) {
+          const existing = bumpAtByIssueId.get(row.issueId);
+          if (!existing || row.createdAt > existing) bumpAtByIssueId.set(row.issueId, row.createdAt);
+        }
+        const bumpEntries = [...bumpAtByIssueId.entries()];
+        for (let start = 0; start < bumpEntries.length; start += DEFAULT_INSERT_CHUNK_ROWS) {
+          const chunk = bumpEntries.slice(start, start + DEFAULT_INSERT_CHUNK_ROWS);
+          await tx.execute(sql`
+            update ${issues}
+            set updated_at = greatest(${issues.updatedAt}, bumps.bump_at)
+            from (values ${sql.join(
+              chunk.map(([issueId, bumpAt]) => sql`(${issueId}::uuid, ${bumpAt.toISOString()}::timestamptz)`),
+              sql`, `,
+            )}) as bumps(issue_id, bump_at)
+            where ${issues.id} = bumps.issue_id
+          `);
         }
       });
     },
@@ -7651,6 +7680,38 @@ export function issueService(db: Db) {
           .then((rows: Array<typeof issues.$inferSelect>) => rows[0] ?? null);
         if (!updated) return null;
         if (existing.status !== updated.status) {
+          if (
+            (existing.status === "done" || existing.status === "cancelled")
+            && updated.status !== "done"
+            && updated.status !== "cancelled"
+          ) {
+            const terminalWorkspaces = await tx
+              .select({ id: executionWorkspaces.id })
+              .from(executionWorkspaces)
+              .where(and(
+                eq(executionWorkspaces.companyId, updated.companyId),
+                eq(executionWorkspaces.sourceIssueId, updated.id),
+                eq(executionWorkspaces.status, "archived"),
+                like(executionWorkspaces.cleanupReason, "issue_terminal%"),
+              ));
+            for (const workspace of terminalWorkspaces) {
+              await logActivity(tx as unknown as Db, {
+                companyId: updated.companyId,
+                actorType: actorAgentId ? "agent" : actorUserId ? "user" : "system",
+                actorId: actorAgentId ?? actorUserId ?? "issue_service",
+                agentId: actorAgentId ?? null,
+                action: "execution_workspace.source_issue_reopened",
+                entityType: "execution_workspace",
+                entityId: workspace.id,
+                details: {
+                  sourceIssueId: updated.id,
+                  previousIssueStatus: existing.status,
+                  nextIssueStatus: updated.status,
+                  workspaceAction: "left_archived",
+                },
+              });
+            }
+          }
           if (updated.status === "done" || updated.status === "cancelled") {
             await finalizeSummarySlotsForTerminalIssue(tx, updated);
             // Every terminal transition funnels through here, including direct

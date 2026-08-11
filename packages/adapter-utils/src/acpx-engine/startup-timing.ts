@@ -365,6 +365,104 @@ export function runWithoutActiveStep<T>(work: () => T): T {
 }
 
 /**
+ * Build the minimal active step context that the store publishes. The step path
+ * and `runWithRuntimeParent` share this builder, so both write the same shape.
+ */
+function buildActiveStepContext(
+  span: StartupSpan,
+  parentContext: StartupSpanContext,
+  criticalPath: boolean,
+): ActiveStepContext {
+  return { span, parentContext, criticalPath };
+}
+
+/**
+ * Run `work` under a given parent-context token, then restore the previous
+ * store. A run-time exec that reads `getActiveStepContext()` inside `work`
+ * parents its span to `parentContext`, not to a startup step. The store carries
+ * the no-op span, because there is no open step span at run time. It sets
+ * `criticalPath` to `false`, because a run-time exec is not on the startup
+ * critical path.
+ *
+ * When `parentContext` is `undefined`, the helper empties the store, exactly
+ * like `runWithoutActiveStep`. Inner code then reads `null` and opens an
+ * unparented span.
+ *
+ * The helper forwards only the opaque token, so this package stays free of
+ * `@opentelemetry/api`.
+ */
+export function runWithRuntimeParent<T>(
+  parentContext: StartupSpanContext,
+  work: () => T,
+): T {
+  if (parentContext === undefined) {
+    return activeStepContextStorage.run(undefined, work);
+  }
+  const activeStep = buildActiveStepContext(NOOP_SPAN, parentContext, false);
+  return activeStepContextStorage.run(activeStep, work);
+}
+
+/**
+ * Run one run-time operation inside its own wrapper span. The runner opens a
+ * wrapper span parented to the current run span, publishes the wrapper span as
+ * the runtime parent while `work` runs, and ends the span when `work` settles.
+ * A child `sandbox.exec` span inside `work` parents to the wrapper span, so the
+ * trace groups the operation's execs under one named span. A throwing `work`
+ * sets the wrapper span error status before the span ends.
+ *
+ * The runner reads the run parent per call, so it always parents to the live
+ * span (`agent.turn` during the turn, `task.run` otherwise). The default runner
+ * opens no real span; it only runs `work` under the current run parent, so the
+ * span path stays a no-op until the server injects a real tracer.
+ */
+export type RuntimeSpanRunner = <T>(name: string, work: () => Promise<T>) => Promise<T>;
+
+/**
+ * Build a {@link RuntimeSpanRunner} from a trace context and the run-parent
+ * getter. The runner opens the wrapper span through `traceContext.tracer`, and
+ * it derives the wrapper span's child parent token through
+ * `traceContext.contextWithSpan`. A no-op trace context yields a runner that
+ * opens no real span and runs `work` under the current run parent, so the span
+ * path stays inert until the server injects a real tracer. Every tracer call
+ * sits inside an error swallow, so a throwing tracer never changes control flow.
+ */
+export function createRuntimeSpanRunner(
+  traceContext: StartupTraceContext,
+  getRuntimeParentContext: () => StartupSpanContext | undefined,
+): RuntimeSpanRunner {
+  return async <T>(name: string, work: () => Promise<T>): Promise<T> => {
+    const parentContext = getRuntimeParentContext();
+    let span: StartupSpan;
+    try {
+      span = traceContext.tracer.startSpan(name, undefined, parentContext);
+    } catch {
+      // A throwing tracer must not change control flow; run `work` unwrapped.
+      return runWithRuntimeParent(parentContext, work);
+    }
+    let childContext: StartupSpanContext;
+    try {
+      childContext = traceContext.contextWithSpan(span);
+    } catch {
+      childContext = parentContext;
+    }
+    let failed = false;
+    try {
+      return await runWithRuntimeParent(childContext, work);
+    } catch (err) {
+      failed = true;
+      throw err;
+    } finally {
+      try {
+        if (failed) span.setStatus({ code: SPAN_STATUS_CODE_ERROR });
+        span.end();
+      } catch {
+        // Observability must not change control flow.
+      }
+    }
+  };
+}
+
+/**
  * Set a numeric span attribute only when the value is a finite number. A reader
  * that returns `undefined` (the counter is unavailable) yields no attribute,
  * never `NaN` and never a misleading `0`. This mirrors the host counter guard
@@ -519,11 +617,11 @@ export async function measureStartupStep<T>(
   } catch {
     stepChildContext = undefined;
   }
-  const activeStep: ActiveStepContext = {
+  const activeStep = buildActiveStepContext(
     span,
-    parentContext: stepChildContext,
-    criticalPath: options.criticalPath ?? true,
-  };
+    stepChildContext,
+    options.criticalPath ?? true,
+  );
 
   let stepFailed = false;
   try {
