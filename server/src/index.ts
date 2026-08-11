@@ -1267,7 +1267,15 @@ export async function startServer(): Promise<StartedServer> {
           // persisted queued work is still being driven forward.
           trackHeartbeatSchedulerWork(heartbeat
             .reapOrphanedRuns({ staleThresholdMs: 5 * 60 * 1000 })
-            .then(() => heartbeat.promoteDueScheduledRetries())
+            .then(async () => {
+              const timedOut = await heartbeat.timeOutSilentActiveRuns();
+              if (timedOut.timedOut > 0) {
+                logger.warn({ ...timedOut }, "periodic silent-run timeout watchdog terminalized active runs");
+              } else if (timedOut.suspicious > 0) {
+                logger.warn({ ...timedOut }, "periodic silent-run watchdog marked active runs suspicious but held off termination");
+              }
+              return heartbeat.promoteDueScheduledRetries();
+            })
             .then(async (promotion) => {
               await heartbeat.resumeQueuedRuns();
               const reconciled = await heartbeat.reconcileStrandedAssignedIssues();

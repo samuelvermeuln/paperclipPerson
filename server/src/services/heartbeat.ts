@@ -295,6 +295,19 @@ import {
   touchHeartbeatRunRuntimeStatus,
 } from "./heartbeat-run-runtime-status.js";
 import {
+  applySilentRunWatchdogObservation,
+  mergeSilentRunWatchdogState,
+  parseSilentRunWatchdogState,
+  SILENT_RUN_FROZEN_GRACE_MS,
+  SILENT_RUN_HARD_TIMEOUT_MS,
+  SILENT_RUN_NO_LIVENESS_GRACE_MS,
+  SILENT_RUN_SUSPICION_THRESHOLD_MS,
+  SILENT_RUN_WATCHDOG_STATE_KEY,
+  SILENT_RUN_ZOMBIE_CANDIDATE_THRESHOLD_MS,
+  type SilentRunProcessProbeSource,
+  type SilentRunWatchdogObservation,
+} from "./silent-run-watchdog.js";
+import {
   findMissingHotRestartSnapshotRunIds,
   readHotRestartIntent,
   removeHotRestartIntent,
@@ -386,6 +399,18 @@ const BOUNDED_TRANSIENT_HEARTBEAT_RETRY_JITTER_RATIO = 0.25;
 const BOUNDED_TRANSIENT_HEARTBEAT_RETRY_REASON = "transient_failure";
 const BOUNDED_TRANSIENT_HEARTBEAT_RETRY_WAKE_REASON = "transient_failure_retry";
 const BOUNDED_TRANSIENT_HEARTBEAT_RETRY_MAX_ATTEMPTS = BOUNDED_TRANSIENT_HEARTBEAT_RETRY_DELAYS_MS.length;
+const SILENT_RUN_TIMEOUT_ERROR_CODE = "silent_output_timeout";
+const SILENT_RUN_TIMEOUT_RETRY_REASON = "silent_output_timeout";
+const SILENT_RUN_TIMEOUT_WAKE_REASON = "silent_output_timeout_retry";
+const SILENT_RUN_TIMEOUT_RETRY_MAX_ATTEMPTS = 1;
+const SILENT_RUN_TIMEOUT_RETRY_DELAY_MS = 60 * 1000;
+export {
+  SILENT_RUN_FROZEN_GRACE_MS,
+  SILENT_RUN_HARD_TIMEOUT_MS,
+  SILENT_RUN_NO_LIVENESS_GRACE_MS,
+  SILENT_RUN_SUSPICION_THRESHOLD_MS,
+  SILENT_RUN_ZOMBIE_CANDIDATE_THRESHOLD_MS,
+} from "./silent-run-watchdog.js";
 export const INTERACTION_CONTINUATION_INFRA_RETRY_REASON = "interaction_continuation_infra_retry";
 export const INTERACTION_CONTINUATION_INFRA_WAKE_REASON = "interaction_continuation_infra_retry";
 const INTERACTION_CONTINUATION_INFRA_MAX_ATTEMPTS = 3;
@@ -411,6 +436,13 @@ const GIT_SENSITIVE_LOCAL_ADAPTER_TYPES = new Set([
   "opencode_local",
   "opencode_9router",
   "pi_local",
+]);
+const SHARED_ADAPTER_QUEUE_LIMITS = new Map<string, number>([
+  ["opencode_9router", 1],
+]);
+const SILENT_RUN_AUTO_TIMEOUT_ADAPTER_TYPES = new Set([
+  "opencode_local",
+  "opencode_9router",
 ]);
 export const MAX_TURN_CONTINUATION_RETRY_REASON = "max_turns_continuation";
 export const MAX_TURN_CONTINUATION_WAKE_REASON = "max_turns_continuation_retry";
@@ -12375,6 +12407,47 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
     return Number(count ?? 0);
   }
 
+  function sharedAdapterQueueLimit(adapterType: string) {
+    return SHARED_ADAPTER_QUEUE_LIMITS.get(adapterType) ?? null;
+  }
+
+  function sharedAdapterQueueLockKey(companyId: string, adapterType: string) {
+    return `shared-adapter-queue:${companyId}:${adapterType}`;
+  }
+
+  async function countRunningRunsForCompanyAdapter(companyId: string, adapterType: string) {
+    const [{ count }] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(heartbeatRuns)
+      .innerJoin(agents, eq(heartbeatRuns.agentId, agents.id))
+      .where(and(
+        eq(heartbeatRuns.companyId, companyId),
+        eq(heartbeatRuns.status, "running"),
+        eq(agents.adapterType, adapterType),
+      ));
+    return Number(count ?? 0);
+  }
+
+  async function startQueuedRunsForSharedAdapterQueue(companyId: string, adapterType: string) {
+    if (sharedAdapterQueueLimit(adapterType) == null) return [] as Array<typeof heartbeatRuns.$inferSelect>;
+    const queuedAgentIds = await db
+      .selectDistinct({ agentId: heartbeatRuns.agentId })
+      .from(heartbeatRuns)
+      .innerJoin(agents, eq(heartbeatRuns.agentId, agents.id))
+      .where(and(
+        eq(heartbeatRuns.companyId, companyId),
+        eq(heartbeatRuns.status, "queued"),
+        eq(agents.adapterType, adapterType),
+      ));
+
+    const started: Array<typeof heartbeatRuns.$inferSelect> = [];
+    for (const { agentId } of queuedAgentIds) {
+      const claimed = await startNextQueuedRunForAgent(agentId);
+      started.push(...claimed);
+    }
+    return started;
+  }
+
   async function claimQueuedRun(run: typeof heartbeatRuns.$inferSelect, companyAgents?: AgentOrgRow[]) {
     if (run.status !== "queued") return run;
     const agent = await getAgent(run.agentId);
@@ -13277,6 +13350,7 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
         wasFirstHeartbeat: timerClaimWasFirstHeartbeat(run),
       });
       await startNextQueuedRunForAgent(run.agentId);
+      await startQueuedRunsForSharedAdapterQueue(run.companyId, adapterType);
       runningProcesses.delete(run.id);
       reaped.push(run.id);
     }
@@ -13305,6 +13379,372 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
     for (const agentId of agentIds) {
       await startNextQueuedRunForAgent(agentId);
     }
+  }
+
+  function parsePsCpuTimeToTicks(value: string): number | null {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    const [dayPart, clockPartRaw] = trimmed.includes("-") ? trimmed.split("-", 2) : [null, trimmed];
+    const clockPart = clockPartRaw?.trim() ?? "";
+    const clock = clockPart.split(":").map((part) => Number.parseInt(part, 10));
+    if (clock.some((part) => !Number.isFinite(part) || part < 0)) return null;
+    const days = dayPart ? Number.parseInt(dayPart, 10) : 0;
+    if (!Number.isFinite(days) || days < 0) return null;
+    let seconds = days * 24 * 60 * 60;
+    if (clock.length === 3) seconds += clock[0]! * 60 * 60 + clock[1]! * 60 + clock[2]!;
+    else if (clock.length === 2) seconds += clock[0]! * 60 + clock[1]!;
+    else if (clock.length === 1) seconds += clock[0]!;
+    else return null;
+    return seconds;
+  }
+
+  async function readSilentRunProcessVitals(input: {
+    pid: number | null;
+    processGroupId: number | null;
+  }): Promise<{
+    source: SilentRunProcessProbeSource;
+    alive: boolean | null;
+    cpuTicks: number | null;
+    state: string | null;
+  }> {
+    const groupAlive =
+      typeof input.processGroupId === "number" && Number.isInteger(input.processGroupId) && input.processGroupId > 0
+        ? isProcessGroupAlive(input.processGroupId)
+        : null;
+    const pid =
+      typeof input.pid === "number" && Number.isInteger(input.pid) && input.pid > 0
+        ? input.pid
+        : null;
+    if (pid == null) {
+      return { source: "none", alive: groupAlive, cpuTicks: null, state: null };
+    }
+
+    if (process.platform === "linux") {
+      try {
+        const stat = await fs.readFile(`/proc/${pid}/stat`, "utf8");
+        const close = stat.lastIndexOf(") ");
+        if (close > 0) {
+          const rest = stat.slice(close + 2).trim().split(/\s+/);
+          const state = typeof rest[0] === "string" && rest[0].length > 0 ? rest[0] : null;
+          const utime = Number.parseInt(rest[11] ?? "", 10);
+          const stime = Number.parseInt(rest[12] ?? "", 10);
+          return {
+            source: "linux_proc",
+            alive: true,
+            cpuTicks: Number.isFinite(utime) && Number.isFinite(stime) ? utime + stime : null,
+            state,
+          };
+        }
+      } catch (error) {
+        const code = (error as NodeJS.ErrnoException | null)?.code;
+        if (code === "ENOENT") {
+          return { source: "linux_proc", alive: false, cpuTicks: null, state: null };
+        }
+      }
+    }
+
+    if (process.platform !== "win32") {
+      try {
+        const { stdout } = await execFile("ps", ["-o", "state=", "-o", "time=", "-p", String(pid)]);
+        const line = stdout
+          .split(/\r?\n/)
+          .map((entry) => entry.trim())
+          .find(Boolean);
+        if (!line) return { source: "ps", alive: false, cpuTicks: null, state: null };
+        const parts = line.split(/\s+/);
+        return {
+          source: "ps",
+          alive: true,
+          state: parts[0]?.charAt(0) ?? null,
+          cpuTicks: parsePsCpuTimeToTicks(parts.slice(1).join(" ")),
+        };
+      } catch {
+        // Fall through to best-effort alive detection below.
+      }
+    }
+
+    try {
+      process.kill(pid, 0);
+      return { source: "none", alive: true, cpuTicks: null, state: null };
+    } catch {
+      return { source: "none", alive: false, cpuTicks: null, state: null };
+    }
+  }
+
+  function buildSilentRunWatchdogObservation(input: {
+    run: Pick<
+      typeof heartbeatRuns.$inferSelect,
+      "id" | "companyId" | "agentId" | "logBytes" | "lastOutputSeq" | "lastOutputBytes" | "processPid" | "processGroupId"
+    >;
+    runtimeStatus: ReturnType<typeof getHeartbeatRunRuntimeStatus>;
+    processVitals: Awaited<ReturnType<typeof readSilentRunProcessVitals>>;
+    now: Date;
+  }): SilentRunWatchdogObservation {
+    const runtimeStatusAt = input.runtimeStatus
+      ? (input.runtimeStatus.lastEventAt ?? input.runtimeStatus.updatedAt)
+      : null;
+    const progressFingerprint = JSON.stringify({
+      logBytes: Number(input.run.logBytes ?? 0),
+      lastOutputSeq: Number(input.run.lastOutputSeq ?? 0),
+      lastOutputBytes: Number(input.run.lastOutputBytes ?? 0),
+    });
+    const stallFingerprint = JSON.stringify({
+      progressFingerprint,
+      runtimeStatusUpdatedAt: runtimeStatusAt?.toISOString() ?? null,
+      processPid: input.run.processPid ?? null,
+      processGroupId: input.run.processGroupId ?? null,
+      processAlive: input.processVitals.alive,
+      processCpuTicks: input.processVitals.cpuTicks,
+      processState: input.processVitals.state,
+      processProbeSource: input.processVitals.source,
+    });
+    return {
+      observedAt: input.now.toISOString(),
+      progressFingerprint,
+      stallFingerprint,
+      runtimeLivenessAgeMs: runtimeStatusAt ? Math.max(0, input.now.getTime() - runtimeStatusAt.getTime()) : null,
+      runtimeStatusUpdatedAt: runtimeStatusAt?.toISOString() ?? null,
+      processPid: input.run.processPid ?? null,
+      processGroupId: input.run.processGroupId ?? null,
+      processAlive: input.processVitals.alive,
+      processCpuTicks: input.processVitals.cpuTicks,
+      processState: input.processVitals.state,
+      processProbeSource: input.processVitals.source,
+    };
+  }
+
+  async function timeOutSilentActiveRuns(opts?: { now?: Date; companyId?: string }) {
+    const now = opts?.now ?? new Date();
+    const suspicionBefore = new Date(now.getTime() - SILENT_RUN_SUSPICION_THRESHOLD_MS);
+    const cutoff = await getWorktreeExecutionCutoff();
+    let candidates = await db
+      .select({
+        run: heartbeatRuns,
+        adapterType: agents.adapterType,
+        adapterConfig: agents.adapterConfig,
+      })
+      .from(heartbeatRuns)
+      .innerJoin(agents, eq(heartbeatRuns.agentId, agents.id))
+      .where(and(
+        opts?.companyId ? eq(heartbeatRuns.companyId, opts.companyId) : undefined,
+        eq(heartbeatRuns.status, "running"),
+        inArray(agents.adapterType, [...SILENT_RUN_AUTO_TIMEOUT_ADAPTER_TYPES]),
+        sql`coalesce(${heartbeatRuns.lastOutputAt}, ${heartbeatRuns.processStartedAt}, ${heartbeatRuns.startedAt}, ${heartbeatRuns.createdAt}) <= ${suspicionBefore.toISOString()}::timestamptz`,
+      ))
+      .orderBy(asc(heartbeatRuns.createdAt))
+      .limit(100);
+
+    if (cutoff) {
+      const issueIds = [...new Set(candidates.flatMap(({ run }) => {
+        const context = parseObject(run.contextSnapshot);
+        const issueId = context.issueId ?? context.taskId;
+        return typeof issueId === "string" && issueId.length > 0 ? [issueId] : [];
+      }))];
+      const eligibleIssueIds = new Set(
+        issueIds.length > 0
+          ? (await db.select({ id: issues.id }).from(issues).where(and(
+              inArray(issues.id, issueIds),
+              gte(issues.createdAt, cutoff),
+            ))).map((issue) => issue.id)
+          : [],
+      );
+      candidates = candidates.filter(({ run }) => {
+        const context = parseObject(run.contextSnapshot);
+        const issueId = context.issueId ?? context.taskId;
+        return typeof issueId === "string" && eligibleIssueIds.has(issueId);
+      });
+    }
+
+    const result = {
+      scanned: candidates.length,
+      timedOut: 0,
+      retried: 0,
+      suspicious: 0,
+      held: 0,
+      skipped: 0,
+      runIds: [] as string[],
+      retryRunIds: [] as string[],
+    };
+
+    for (const candidate of candidates) {
+      const { run, adapterType, adapterConfig } = candidate;
+      const silence = await recovery.buildRunOutputSilence(run, now);
+      if ((silence.silenceAgeMs ?? 0) < SILENT_RUN_SUSPICION_THRESHOLD_MS || silence.level === "snoozed") {
+        result.skipped += 1;
+        continue;
+      }
+
+      const agent = await getAgent(run.agentId);
+      if (!agent) {
+        result.skipped += 1;
+        continue;
+      }
+
+      const runtimeStatus = getHeartbeatRunRuntimeStatus(run.id, {
+        companyId: run.companyId,
+        agentId: run.agentId,
+        now,
+        ttlMs: SILENT_RUN_NO_LIVENESS_GRACE_MS,
+      });
+      const processVitals = await readSilentRunProcessVitals({
+        pid: run.processPid ?? null,
+        processGroupId: run.processGroupId ?? null,
+      });
+      const resultJson = parseObject(run.resultJson);
+      const previousWatchdog = parseSilentRunWatchdogState(resultJson[SILENT_RUN_WATCHDOG_STATE_KEY]);
+      const observation = buildSilentRunWatchdogObservation({
+        run,
+        runtimeStatus,
+        processVitals,
+        now,
+      });
+      const decision = applySilentRunWatchdogObservation({
+        previous: previousWatchdog,
+        observation,
+        silenceAgeMs: silence.silenceAgeMs ?? 0,
+        now,
+      });
+
+      if (decision.stateChanged) {
+        await db
+          .update(heartbeatRuns)
+          .set({
+            resultJson: mergeSilentRunWatchdogState(resultJson, decision.nextState),
+            updatedAt: new Date(),
+          })
+          .where(and(eq(heartbeatRuns.id, run.id), eq(heartbeatRuns.status, "running")));
+      }
+
+      if (decision.action === "notify_suspicious") {
+        result.suspicious += 1;
+        const suspiciousMessage =
+          `Paperclip marked this silent ${adapterType} run as suspicious after ${Math.round(SILENT_RUN_SUSPICION_THRESHOLD_MS / 60_000)} minutes without output. No interruption yet; watchdog is waiting for stronger zombie evidence.`;
+        await appendRunEvent(run, await nextRunEventSeq(run.id), {
+          eventType: "lifecycle",
+          stream: "system",
+          level: "warn",
+          message: suspiciousMessage,
+          payload: {
+            adapterType,
+            silenceAgeMs: silence.silenceAgeMs,
+            suspicionThresholdMs: SILENT_RUN_SUSPICION_THRESHOLD_MS,
+            zombieCandidateThresholdMs: SILENT_RUN_ZOMBIE_CANDIDATE_THRESHOLD_MS,
+            frozenGraceMs: SILENT_RUN_FROZEN_GRACE_MS,
+            runtimeLivenessGraceMs: SILENT_RUN_NO_LIVENESS_GRACE_MS,
+            processPid: run.processPid ?? null,
+            processGroupId: run.processGroupId ?? null,
+            processProbeSource: processVitals.source,
+          },
+        });
+      }
+
+      if (decision.action !== "timeout_likely_zombie" && decision.action !== "timeout_hard_cap") {
+        result.held += 1;
+        continue;
+      }
+
+      await terminateHeartbeatRunProcess({
+        pid: run.processPid,
+        processGroupId: run.processGroupId,
+      });
+
+      const timeoutReason = decision.action === "timeout_hard_cap"
+        ? `it exceeded the ${Math.round(SILENT_RUN_HARD_TIMEOUT_MS / 60_000)}-minute hard cap after process activity stayed frozen`
+        : "output, runtime liveness, and process activity all stayed frozen";
+      const frozenMinutes = Math.max(1, Math.round(decision.frozenAgeMs / 60_000));
+      const silentMinutes = Math.max(1, Math.round((silence.silenceAgeMs ?? 0) / 60_000));
+      const timeoutMessage =
+        `Paperclip auto-timed out a silent ${adapterType} run after ${silentMinutes} minutes because ${timeoutReason} for ${frozenMinutes} minutes.`;
+      const persistedResultJson = mergeRunStopMetadataForAgent(
+        { adapterType, adapterConfig },
+        "timed_out",
+        {
+          resultJson: {
+            ...(mergeSilentRunWatchdogState(resultJson, decision.nextState) ?? {}),
+            stopReason: SILENT_RUN_TIMEOUT_ERROR_CODE,
+            timeoutSource: "silent_run_watchdog",
+            timeoutConfigured: false,
+            timeoutFired: true,
+            silenceAgeMs: silence.silenceAgeMs,
+            silentSuspicionThresholdMs: SILENT_RUN_SUSPICION_THRESHOLD_MS,
+            silentZombieCandidateThresholdMs: SILENT_RUN_ZOMBIE_CANDIDATE_THRESHOLD_MS,
+            silentFrozenGraceMs: SILENT_RUN_FROZEN_GRACE_MS,
+            silentHardTimeoutMs: SILENT_RUN_HARD_TIMEOUT_MS,
+            silentTimeoutRetryDelayMs: SILENT_RUN_TIMEOUT_RETRY_DELAY_MS,
+            silentRuntimeLivenessGraceMs: SILENT_RUN_NO_LIVENESS_GRACE_MS,
+            silentFrozenAgeMs: decision.frozenAgeMs,
+            silentTimeoutDecision: decision.action,
+          },
+          errorCode: SILENT_RUN_TIMEOUT_ERROR_CODE,
+          errorMessage: timeoutMessage,
+        },
+      );
+      const timeoutWrite = await setRunStatusIfRunning(run.id, "timed_out", {
+        error: timeoutMessage,
+        errorCode: SILENT_RUN_TIMEOUT_ERROR_CODE,
+        finishedAt: now,
+        resultJson: persistedResultJson,
+      });
+      let timedOutRun = timeoutWrite.run;
+      if (!timeoutWrite.updated || !timedOutRun) {
+        result.skipped += 1;
+        continue;
+      }
+
+      timedOutRun = await classifyAndPersistRunLiveness(timedOutRun, parseObject(timedOutRun.resultJson)) ?? timedOutRun;
+      await setWakeupStatus(run.wakeupRequestId, "timed_out", {
+        finishedAt: now,
+        error: timeoutMessage,
+      });
+      await appendRunEvent(timedOutRun, await nextRunEventSeq(timedOutRun.id), {
+        eventType: "lifecycle",
+        stream: "system",
+        level: "error",
+        message: timeoutMessage,
+        payload: {
+          adapterType,
+          silenceAgeMs: silence.silenceAgeMs,
+          suspicionThresholdMs: SILENT_RUN_SUSPICION_THRESHOLD_MS,
+          zombieCandidateThresholdMs: SILENT_RUN_ZOMBIE_CANDIDATE_THRESHOLD_MS,
+          frozenGraceMs: SILENT_RUN_FROZEN_GRACE_MS,
+          hardTimeoutMs: SILENT_RUN_HARD_TIMEOUT_MS,
+          runtimeLivenessGraceMs: SILENT_RUN_NO_LIVENESS_GRACE_MS,
+          retryDelayMs: SILENT_RUN_TIMEOUT_RETRY_DELAY_MS,
+          processPid: run.processPid ?? null,
+          processGroupId: run.processGroupId ?? null,
+          processProbeSource: processVitals.source,
+          processState: processVitals.state,
+          processCpuTicks: processVitals.cpuTicks,
+          runtimeStatusUpdatedAt: observation.runtimeStatusUpdatedAt,
+          frozenAgeMs: decision.frozenAgeMs,
+          timeoutDecision: decision.action,
+        },
+      });
+
+      const retry = await scheduleBoundedRetryForRun(timedOutRun, agent, {
+        now,
+        retryReason: SILENT_RUN_TIMEOUT_RETRY_REASON,
+        wakeReason: SILENT_RUN_TIMEOUT_WAKE_REASON,
+        maxAttempts: SILENT_RUN_TIMEOUT_RETRY_MAX_ATTEMPTS,
+        delayMs: SILENT_RUN_TIMEOUT_RETRY_DELAY_MS,
+      });
+      if (retry.outcome === "scheduled") {
+        result.retried += 1;
+        result.retryRunIds.push(retry.run.id);
+      }
+
+      await releaseIssueExecutionAndPromote(timedOutRun);
+      await finalizeAgentStatus(agent.id, "timed_out", timeoutMessage, {
+        wasFirstHeartbeat: timerClaimWasFirstHeartbeat(run),
+      });
+      await startNextQueuedRunForAgent(agent.id);
+      await startQueuedRunsForSharedAdapterQueue(run.companyId, adapterType);
+
+      result.timedOut += 1;
+      result.runIds.push(run.id);
+    }
+
+    return result;
   }
 
   async function reconcileStrandedAssignedIssues() {
@@ -13431,21 +13871,33 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
   async function startNextQueuedRunForAgent(agentId: string) {
     if ((await getSchedulingSuppression()).suppressed) return [];
     const cutoff = await getWorktreeExecutionCutoff();
+    const agent = await getAgent(agentId);
+    if (!agent) return [];
+    const queueLockKey = sharedAdapterQueueLimit(agent.adapterType) != null
+      ? sharedAdapterQueueLockKey(agent.companyId, agent.adapterType)
+      : null;
 
-    return withAgentStartLock(agentId, async () => {
-      const agent = await getAgent(agentId);
-      if (!agent) return [];
-      const invokability = await getAgentInvokability(agent);
+    const start = async () => {
+      const latestAgent = await getAgent(agentId);
+      if (!latestAgent) return [];
+      const invokability = await getAgentInvokability(latestAgent);
       if (!invokability.invokable) {
         if (shouldCancelRunsForNonInvokableAgent(invokability)) {
           await cancelActiveForAgentInternal(agentId, `Cancelled because the agent is not invokable: ${invokability.reason}`);
         }
         return [];
       }
-      const policy = parseHeartbeatPolicy(agent);
+      const policy = parseHeartbeatPolicy(latestAgent);
       const runningCount = await countRunningRunsForAgent(agentId);
-      const availableSlots = Math.max(0, policy.maxConcurrentRuns - runningCount);
+      let availableSlots = Math.max(0, policy.maxConcurrentRuns - runningCount);
       if (availableSlots <= 0) return [];
+
+      const sharedQueueCap = sharedAdapterQueueLimit(latestAgent.adapterType);
+      if (sharedQueueCap != null) {
+        const sharedRunningCount = await countRunningRunsForCompanyAdapter(latestAgent.companyId, latestAgent.adapterType);
+        availableSlots = Math.min(availableSlots, Math.max(0, sharedQueueCap - sharedRunningCount));
+        if (availableSlots <= 0) return [];
+      }
 
       const queuedRuns = await db
         .select()
@@ -13458,7 +13910,7 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
         .orderBy(asc(heartbeatRuns.createdAt));
       if (queuedRuns.length === 0) return [];
 
-      const dependencyReadiness = await listQueuedRunDependencyReadiness(agent.companyId, queuedRuns);
+      const dependencyReadiness = await listQueuedRunDependencyReadiness(latestAgent.companyId, queuedRuns);
       const queuedIssueIds = [...new Set(
         queuedRuns
           .map((run) => readNonEmptyString(parseObject(run.contextSnapshot).issueId))
@@ -13473,11 +13925,11 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
         .from(issues)
         .where(
           queuedIssueIds.length > 0
-            ? and(eq(issues.companyId, agent.companyId), inArray(issues.id, queuedIssueIds))
+            ? and(eq(issues.companyId, latestAgent.companyId), inArray(issues.id, queuedIssueIds))
             : sql`false`,
         );
       const issueById = new Map(issueRows.map((row) => [row.id, row]));
-      const companyAgents = await listCompanyAgentOrgRows(agent.companyId);
+      const companyAgents = await listCompanyAgentOrgRows(latestAgent.companyId);
       const prioritizedRuns = [...queuedRuns].sort((left, right) => {
         const leftIssueId = readNonEmptyString(parseObject(left.contextSnapshot).issueId);
         const rightIssueId = readNonEmptyString(parseObject(right.contextSnapshot).issueId);
@@ -13518,7 +13970,12 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
         });
       }
       return claimedRuns;
-    });
+    };
+
+    const startUnderAgentLock = () => withAgentStartLock(agentId, start);
+    return queueLockKey
+      ? withAgentStartLock(queueLockKey, startUnderAgentLock)
+      : startUnderAgentLock();
   }
 
   // Await every background heartbeat execution that is currently in flight. A
@@ -16360,6 +16817,10 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
           }
           activeRunExecutions.delete(run.id);
           await startNextQueuedRunForAgent(run.agentId);
+          const latestAgent = await getAgent(run.agentId).catch(() => null);
+          if (latestAgent) {
+            await startQueuedRunsForSharedAdapterQueue(run.companyId, latestAgent.adapterType);
+          }
         }
   }
 
@@ -18980,6 +19441,7 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
     reconcileIssueGraphLiveness,
 
     scanSilentActiveRuns,
+    timeOutSilentActiveRuns,
 
     reconcileProductivityReviews,
 

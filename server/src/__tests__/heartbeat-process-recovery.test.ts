@@ -475,6 +475,283 @@ describeEmbeddedPostgres("heartbeat orphaned process recovery", () => {
     await tempDb?.cleanup();
   });
 
+  it("serializes opencode_9router runs across agents in the same company", async () => {
+    const heartbeat = heartbeatService(db);
+    const companyId = randomUUID();
+    const managerId = randomUUID();
+    const agentAId = randomUUID();
+    const agentBId = randomUUID();
+    const wakeAId = randomUUID();
+    const wakeBId = randomUUID();
+    const runAId = randomUUID();
+    const runBId = randomUUID();
+    const now = new Date("2026-08-11T12:00:00.000Z");
+
+    await db.insert(companies).values({
+      id: companyId,
+      name: "Queue Co",
+      issuePrefix: "QUEUE",
+      defaultResponsibleUserId: "responsible-user",
+      requireBoardApprovalForNewAgents: false,
+      createdAt: now,
+      updatedAt: now,
+    });
+    await db.insert(agents).values([
+      {
+        id: managerId,
+        companyId,
+        name: "CTO",
+        role: "cto",
+        status: "idle",
+        adapterType: "codex_local",
+        adapterConfig: {},
+        runtimeConfig: {},
+        permissions: {},
+        createdAt: now,
+        updatedAt: now,
+      },
+      {
+        id: agentAId,
+        companyId,
+        name: "Nine Router A",
+        role: "engineer",
+        reportsTo: managerId,
+        status: "idle",
+        adapterType: "opencode_9router",
+        adapterConfig: {},
+        runtimeConfig: { heartbeat: { maxConcurrentRuns: 1 } },
+        permissions: {},
+        createdAt: now,
+        updatedAt: now,
+      },
+      {
+        id: agentBId,
+        companyId,
+        name: "Nine Router B",
+        role: "engineer",
+        reportsTo: managerId,
+        status: "idle",
+        adapterType: "opencode_9router",
+        adapterConfig: {},
+        runtimeConfig: { heartbeat: { maxConcurrentRuns: 1 } },
+        permissions: {},
+        createdAt: now,
+        updatedAt: now,
+      },
+    ]);
+    await db.insert(agentWakeupRequests).values([
+      {
+        id: wakeAId,
+        companyId,
+        agentId: agentAId,
+        source: "on_demand",
+        triggerDetail: "manual",
+        reason: "test",
+        status: "queued",
+        requestedAt: now,
+        updatedAt: now,
+      },
+      {
+        id: wakeBId,
+        companyId,
+        agentId: agentBId,
+        source: "on_demand",
+        triggerDetail: "manual",
+        reason: "test",
+        status: "queued",
+        requestedAt: new Date(now.getTime() + 1_000),
+        updatedAt: new Date(now.getTime() + 1_000),
+      },
+    ]);
+    await db.insert(heartbeatRuns).values([
+      {
+        id: runAId,
+        companyId,
+        agentId: agentAId,
+        invocationSource: "on_demand",
+        triggerDetail: "manual",
+        status: "queued",
+        wakeupRequestId: wakeAId,
+        contextSnapshot: {},
+        createdAt: now,
+        updatedAt: now,
+      },
+      {
+        id: runBId,
+        companyId,
+        agentId: agentBId,
+        invocationSource: "on_demand",
+        triggerDetail: "manual",
+        status: "queued",
+        wakeupRequestId: wakeBId,
+        contextSnapshot: {},
+        createdAt: new Date(now.getTime() + 1_000),
+        updatedAt: new Date(now.getTime() + 1_000),
+      },
+    ]);
+
+    let releaseFirst: (() => void) | null = null;
+    const firstStarted = new Promise<void>((resolve) => {
+      mockAdapterExecute.mockImplementation(async () => {
+        if (releaseFirst === null) {
+          resolve();
+          await new Promise<void>((resume) => {
+            releaseFirst = resume;
+          });
+        }
+        return {
+          exitCode: 0,
+          signal: null,
+          timedOut: false,
+          errorMessage: null,
+          summary: "completed",
+          provider: "test",
+          model: "test-model",
+        };
+      });
+    });
+
+    await heartbeat.resumeQueuedRuns();
+    await firstStarted;
+
+    const statusesWhileFirstBlocked = await db
+      .select({ id: heartbeatRuns.id, status: heartbeatRuns.status })
+      .from(heartbeatRuns)
+      .where(inArray(heartbeatRuns.id, [runAId, runBId]));
+    expect(statusesWhileFirstBlocked.filter((row) => row.status === "running")).toHaveLength(1);
+    expect(statusesWhileFirstBlocked.filter((row) => row.status === "queued")).toHaveLength(1);
+    expect(mockAdapterExecute).toHaveBeenCalledTimes(1);
+
+    releaseFirst?.();
+    await waitForHeartbeatIdle(db);
+
+    const finalStatuses = await db
+      .select({ id: heartbeatRuns.id, status: heartbeatRuns.status })
+      .from(heartbeatRuns)
+      .where(inArray(heartbeatRuns.id, [runAId, runBId]));
+    expect(finalStatuses.every((row) => row.status === "succeeded")).toBe(true);
+    expect(mockAdapterExecute).toHaveBeenCalledTimes(2);
+  });
+
+  it("times out silent opencode runs only after frozen liveness persists", async () => {
+    const heartbeat = heartbeatService(db);
+    const companyId = randomUUID();
+    const managerId = randomUUID();
+    const agentId = randomUUID();
+    const issueId = randomUUID();
+    const wakeupId = randomUUID();
+    const runId = randomUUID();
+    const now = new Date("2026-08-11T12:00:00.000Z");
+    const startedAt = new Date(now.getTime() - 46 * 60 * 1000);
+    const idleChild = spawnAliveProcess();
+    childProcesses.add(idleChild);
+
+    await db.insert(companies).values({
+      id: companyId,
+      name: "Timeout Co",
+      issuePrefix: "TIME",
+      defaultResponsibleUserId: "responsible-user",
+      requireBoardApprovalForNewAgents: false,
+      createdAt: startedAt,
+      updatedAt: startedAt,
+    });
+    await db.insert(agents).values([
+      {
+        id: managerId,
+        companyId,
+        name: "CTO",
+        role: "cto",
+        status: "idle",
+        adapterType: "codex_local",
+        adapterConfig: {},
+        runtimeConfig: {},
+        permissions: {},
+        createdAt: startedAt,
+        updatedAt: startedAt,
+      },
+      {
+        id: agentId,
+        companyId,
+        name: "Nine Router Worker",
+        role: "engineer",
+        reportsTo: managerId,
+        status: "running",
+        adapterType: "opencode_9router",
+        adapterConfig: {},
+        runtimeConfig: { heartbeat: { maxConcurrentRuns: 1 } },
+        permissions: {},
+        createdAt: startedAt,
+        updatedAt: startedAt,
+      },
+    ]);
+    await db.insert(issues).values({
+      id: issueId,
+      companyId,
+      title: "Hung 9Router run",
+      status: "in_progress",
+      priority: "medium",
+      assigneeAgentId: agentId,
+      issueNumber: 1,
+      identifier: "TIME-1",
+      executionRunId: runId,
+      createdAt: startedAt,
+      updatedAt: startedAt,
+    });
+    await db.insert(agentWakeupRequests).values({
+      id: wakeupId,
+      companyId,
+      agentId,
+      source: "assignment",
+      triggerDetail: "system",
+      reason: "issue_assigned",
+      status: "running",
+      requestedAt: startedAt,
+      updatedAt: startedAt,
+    });
+    await db.insert(heartbeatRuns).values({
+      id: runId,
+      companyId,
+      agentId,
+      invocationSource: "assignment",
+      triggerDetail: "system",
+      status: "running",
+      wakeupRequestId: wakeupId,
+      startedAt,
+      processStartedAt: startedAt,
+      processPid: idleChild.pid ?? null,
+      processGroupId: process.platform === "win32" ? null : idleChild.pid ?? null,
+      contextSnapshot: { issueId, taskId: issueId },
+      createdAt: startedAt,
+      updatedAt: startedAt,
+    });
+
+    const firstSweep = await heartbeat.timeOutSilentActiveRuns({ now });
+    expect(firstSweep.timedOut).toBe(0);
+    expect(firstSweep.suspicious).toBe(1);
+
+    const secondSweepAt = new Date(now.getTime() + 31 * 60 * 1000);
+    const secondSweep = await heartbeat.timeOutSilentActiveRuns({ now: secondSweepAt });
+    expect(secondSweep.timedOut).toBe(1);
+    expect(secondSweep.retried).toBe(1);
+    expect(secondSweep.runIds).toEqual([runId]);
+
+    const timedOutRun = await heartbeat.getRun(runId);
+    expect(timedOutRun?.status).toBe("timed_out");
+    expect(timedOutRun?.errorCode).toBe("silent_output_timeout");
+
+    const retryRun = await db
+      .select()
+      .from(heartbeatRuns)
+      .where(and(eq(heartbeatRuns.retryOfRunId, runId), eq(heartbeatRuns.scheduledRetryReason, "silent_output_timeout")))
+      .then((rows) => rows[0] ?? null);
+    expect(retryRun?.status).toBe("scheduled_retry");
+    expect(retryRun?.scheduledRetryAttempt).toBe(1);
+    expect(retryRun?.scheduledRetryAt?.getTime()).toBeGreaterThan(secondSweepAt.getTime());
+
+    const refreshedIssue = await db.select().from(issues).where(eq(issues.id, issueId)).then((rows) => rows[0] ?? null);
+    expect(refreshedIssue?.executionRunId).toBe(retryRun?.id ?? null);
+  });
+
   async function seedRunFixture(input?: {
     adapterType?: string;
     agentStatus?: "paused" | "idle" | "running";

@@ -14,9 +14,9 @@ export function buildOpenCodeLocalConfig(v: CreateConfigValues): Record<string, 
   if (v.model) ac.model = v.model;
   if (v.thinkingEffort) ac.variant = v.thinkingEffort;
   ac.dangerouslySkipPermissions = v.dangerouslySkipPermissions;
-  // OpenCode sessions can run until the CLI exits naturally; keep timeout disabled (0)
-  // and rely on graceSec for termination handling when a timeout is configured elsewhere.
-  ac.timeoutSec = 0;
+  // Use a conservative hard cap. Shorter silent-run handling is watchdog-based
+  // and waits for frozen liveness signals instead of killing on wall-clock time.
+  ac.timeoutSec = 12 * 60 * 60;
   ac.graceSec = 20;
   const env = buildAdapterEnvConfig(v.envBindings, v.envVars);
   if (Object.keys(env).length > 0) ac.env = env;

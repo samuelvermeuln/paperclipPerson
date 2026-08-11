@@ -66,7 +66,7 @@ export function buildOpenCode9RouterConfig(v: CreateConfigValues): Record<string
     ac.modelsCacheTtlSeconds = v.opencode9RouterModelsCacheTtlSeconds;
   }
   ac.dangerouslySkipPermissions = v.dangerouslySkipPermissions;
-  ac.timeoutSec = 0;
+  ac.timeoutSec = 12 * 60 * 60;
   ac.graceSec = 20;
   const env = parseEnvBindings(v.envBindings);
   const legacy = parseEnvVars(v.envVars);

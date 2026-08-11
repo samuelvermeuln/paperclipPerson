@@ -57,6 +57,7 @@ import { prepareOpenCodeRuntimeConfig } from "./runtime-config.js";
 import { SANDBOX_INSTALL_COMMAND } from "../index.js";
 
 const __moduleDir = path.dirname(fileURLToPath(import.meta.url));
+const DEFAULT_OPENCODE_RUN_TIMEOUT_SEC = 12 * 60 * 60;
 
 function firstNonEmptyLine(text: string): string {
   return (
@@ -317,9 +318,10 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
         (entry): entry is [string, string] => typeof entry[1] === "string",
       ),
     );
+    const configuredTimeoutSec = asNumber(config.timeoutSec, 0);
     const timeoutSec = resolveAdapterExecutionTargetTimeoutSec(
       executionTarget,
-      asNumber(config.timeoutSec, 0),
+      configuredTimeoutSec === 0 ? DEFAULT_OPENCODE_RUN_TIMEOUT_SEC : configuredTimeoutSec,
     );
     const graceSec = asNumber(config.graceSec, 20);
     await ensureAdapterExecutionTargetRuntimeCommandInstalled({
