@@ -21,8 +21,48 @@ export interface NineRouterDiscoveryResult {
   fetchedAt: string;
 }
 
+export interface NineRouterManagementRequestLogEntry {
+  id: string | null;
+  provider: string | null;
+  model: string | null;
+  connectionId: string | null;
+  connectionName: string | null;
+  status: string | null;
+  inputTokens: number | null;
+  outputTokens: number | null;
+  timestamp: string | null;
+  raw: Record<string, unknown>;
+}
+
+export interface NineRouterProviderConnection {
+  id: string;
+  provider: string | null;
+  name: string | null;
+  models: string[];
+  raw: Record<string, unknown>;
+}
+
+export interface NineRouterConnectionQuotaState {
+  connectionId: string;
+  provider: string | null;
+  available: boolean | null;
+  exhausted: boolean;
+  resetAt: string | null;
+  reason: string | null;
+  raw: Record<string, unknown>;
+}
+
+export interface NineRouterComboCapacity {
+  combo: string;
+  available: boolean;
+  retryAt: string | null;
+  reason: string | null;
+  connections: NineRouterConnectionQuotaState[];
+}
+
 export interface NineRouterResolvedConfig {
   normalizedBaseUrl: string;
+  managementBaseUrl: string;
   apiKeyEnv: string;
   apiKey: string;
   comboPrefix: string;
@@ -42,7 +82,8 @@ export class NineRouterDiscoveryError extends Error {
     | "timeout"
     | "invalid_response"
     | "no_combos"
-    | "http_error";
+    | "http_error"
+    | "rate_limited";
   status: number;
   retryable: boolean;
 
@@ -154,6 +195,20 @@ function buildDiscoveryCacheKey(input: {
   return `${input.normalizedBaseUrl}\n${input.apiKeyEnv}\n${input.comboPrefix}`;
 }
 
+function derive9RouterManagementBaseUrl(normalizedBaseUrl: string): string {
+  const url = new URL(normalizedBaseUrl);
+  const segments = url.pathname
+    .split("/")
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+  if (segments[segments.length - 1] === "models") segments.pop();
+  if (segments[segments.length - 1] === "v1") segments.pop();
+  url.pathname = segments.length > 0 ? `/${segments.join("/")}` : "/";
+  url.search = "";
+  url.hash = "";
+  return url.toString().replace(/\/$/, "");
+}
+
 function pruneExpiredDiscoveryCache(now: number) {
   for (const [key, value] of discoveryCache.entries()) {
     if (value.expiresAt <= now) discoveryCache.delete(key);
@@ -242,7 +297,7 @@ function classifyResponseError(response: Response): never {
   }
   if (response.status === 429 || response.status === 502 || response.status === 503 || response.status === 504) {
     throw new NineRouterDiscoveryError({
-      code: response.status === 429 ? "http_error" : "unavailable",
+      code: response.status === 429 ? "rate_limited" : "unavailable",
       status: response.status,
       retryable: true,
       message: "O 9Router está temporariamente indisponível.",
@@ -374,6 +429,7 @@ export function resolve9RouterConfig(
   const normalizedBaseUrl = normalize9RouterBaseUrl(
     readTrimmedString(config.baseUrl) || effectiveRuntimeEnv.NINEROUTER_BASE_URL,
   );
+  const managementBaseUrl = derive9RouterManagementBaseUrl(normalizedBaseUrl);
   const comboPrefixRaw = hasOwnKey(config, "comboPrefix")
     ? readTrimmedString(config.comboPrefix)
     : readTrimmedString(effectiveRuntimeEnv.NINEROUTER_COMBO_PREFIX);
@@ -389,6 +445,7 @@ export function resolve9RouterConfig(
 
   return {
     normalizedBaseUrl,
+    managementBaseUrl,
     apiKeyEnv,
     apiKey,
     comboPrefix,
@@ -549,6 +606,332 @@ export function resolveSmallCombo(config: NineRouterResolvedConfig, discovery: N
   if (!preferred) return primaryCombo;
   if (discovery.combos.some((entry) => entry.id === preferred)) return preferred;
   throw new Error(buildMissingComboMessage(preferred, discovery.combos));
+}
+
+function build9RouterAuthHeaders(apiKey: string): Record<string, string> {
+  return {
+    Authorization: `Bearer ${apiKey}`,
+    Accept: "application/json",
+  };
+}
+
+async function fetch9RouterApiJson(input: {
+  url: string;
+  apiKey: string;
+  timeoutMs?: number;
+  service: string;
+  message: string;
+}): Promise<unknown> {
+  const timeoutMs = readPositiveInteger(input.timeoutMs, DEFAULT_NINEROUTER_MODELS_TIMEOUT_MS);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(input.url, {
+      method: "GET",
+      headers: build9RouterAuthHeaders(input.apiKey),
+      signal: controller.signal,
+    });
+    if (!response.ok) classifyResponseError(response);
+    try {
+      return await response.json();
+    } catch {
+      throw new NineRouterDiscoveryError({
+        code: "invalid_response",
+        status: 502,
+        message: `${input.message}: o 9Router retornou JSON inválido.`,
+      });
+    }
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new NineRouterDiscoveryError({
+        code: "timeout",
+        status: 504,
+        retryable: true,
+        message: `${input.message}: tempo limite excedido.`,
+      });
+    }
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
+function asArray(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [];
+}
+
+function readStringArray(value: unknown): string[] {
+  return asArray(value)
+    .map((entry) => readTrimmedString(entry))
+    .filter(Boolean);
+}
+
+function readNullableNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim()) {
+    const normalized = value.trim().replace(/,/g, "");
+    const parsed = Number(normalized);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return null;
+}
+
+function readIsoDate(value: unknown): string | null {
+  if (!(typeof value === "string" || value instanceof Date || typeof value === "number")) return null;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+}
+
+function lookupCaseInsensitive(record: Record<string, unknown>, candidates: string[]): unknown {
+  const lowered = new Map(Object.entries(record).map(([key, value]) => [key.toLowerCase(), value]));
+  for (const candidate of candidates) {
+    const value = lowered.get(candidate.toLowerCase());
+    if (value !== undefined) return value;
+  }
+  return undefined;
+}
+
+function parseRequestLogEntry(raw: unknown): NineRouterManagementRequestLogEntry | null {
+  const record = asRecord(raw);
+  if (!record) return null;
+  const id = readTrimmedString(lookupCaseInsensitive(record, ["id", "requestId", "request_id"])) || null;
+  const provider = readTrimmedString(lookupCaseInsensitive(record, ["provider", "providerName"])) || null;
+  const model = readTrimmedString(lookupCaseInsensitive(record, ["model", "modelName"])) || null;
+  const connectionId = readTrimmedString(lookupCaseInsensitive(record, ["connectionId", "connection_id", "providerId", "provider_id"])) || null;
+  const connectionName = readTrimmedString(lookupCaseInsensitive(record, ["connectionName", "connection_name", "providerLabel", "provider_label"])) || null;
+  const status = readTrimmedString(lookupCaseInsensitive(record, ["status", "result", "outcome"])) || null;
+  const inputTokens = readNullableNumber(lookupCaseInsensitive(record, ["inputTokens", "input_tokens", "promptTokens", "prompt_tokens"]));
+  const outputTokens = readNullableNumber(lookupCaseInsensitive(record, ["outputTokens", "output_tokens", "completionTokens", "completion_tokens"]));
+  const timestamp = readIsoDate(lookupCaseInsensitive(record, ["timestamp", "createdAt", "created_at", "startedAt", "started_at"]));
+  return {
+    id,
+    provider,
+    model,
+    connectionId,
+    connectionName,
+    status,
+    inputTokens,
+    outputTokens,
+    timestamp,
+    raw: record,
+  };
+}
+
+function extractRecordArray(payload: unknown, explicitKeys: string[] = []): Record<string, unknown>[] {
+  const root = asRecord(payload);
+  if (!root) return [];
+  for (const key of explicitKeys) {
+    const candidate = root[key];
+    if (Array.isArray(candidate)) {
+      return candidate.map((entry) => asRecord(entry)).filter((entry): entry is Record<string, unknown> => Boolean(entry));
+    }
+  }
+  for (const value of Object.values(root)) {
+    if (Array.isArray(value) && value.every((entry) => typeof entry === "object" && entry !== null)) {
+      return value.map((entry) => asRecord(entry)).filter((entry): entry is Record<string, unknown> => Boolean(entry));
+    }
+  }
+  return [];
+}
+
+function extractConnectionsFromCombo(rawCombo: Record<string, unknown>): string[] {
+  const ids = new Set<string>();
+  const visit = (value: unknown) => {
+    if (Array.isArray(value)) {
+      for (const entry of value) visit(entry);
+      return;
+    }
+    const record = asRecord(value);
+    if (!record) return;
+    const directId = readTrimmedString(lookupCaseInsensitive(record, ["connectionId", "connection_id", "providerId", "provider_id", "id"]));
+    const providerMarker = readTrimmedString(lookupCaseInsensitive(record, ["provider", "type", "kind"]));
+    if (directId && (providerMarker || hasOwnKey(record, "connectionId") || hasOwnKey(record, "connection_id") || hasOwnKey(record, "providerId") || hasOwnKey(record, "provider_id"))) {
+      ids.add(directId);
+    }
+    for (const nested of Object.values(record)) visit(nested);
+  };
+  visit(rawCombo);
+  return [...ids];
+}
+
+function parseProviderConnection(raw: unknown): NineRouterProviderConnection | null {
+  const record = asRecord(raw);
+  if (!record) return null;
+  const id = readTrimmedString(lookupCaseInsensitive(record, ["id", "connectionId", "connection_id", "providerId", "provider_id"]));
+  if (!id) return null;
+  return {
+    id,
+    provider: readTrimmedString(lookupCaseInsensitive(record, ["provider", "type", "kind"])) || null,
+    name: readTrimmedString(lookupCaseInsensitive(record, ["name", "label", "connectionName", "connection_name"])) || null,
+    models: readStringArray(lookupCaseInsensitive(record, ["models", "modelIds", "model_ids"])),
+    raw: record,
+  };
+}
+
+function parseQuotaState(input: { connection: NineRouterProviderConnection; usagePayload: unknown }): NineRouterConnectionQuotaState {
+  const record = asRecord(input.usagePayload) ?? {};
+  const availableRaw = lookupCaseInsensitive(record, ["available", "isAvailable", "canRun"]);
+  const exhaustedRaw = lookupCaseInsensitive(record, ["exhausted", "quotaExceeded", "quota_exhausted", "locked"]);
+  const resetAt = readIsoDate(lookupCaseInsensitive(record, ["resetAt", "retryAt", "reset_at", "retry_at", "nextResetAt", "next_reset_at"]));
+  const countdownMs = readNullableNumber(lookupCaseInsensitive(record, ["countdownMs", "retryAfterMs", "cooldownMs", "countdown_ms", "retry_after_ms", "cooldown_ms"]));
+  const resolvedResetAt = resetAt ?? (countdownMs != null && countdownMs >= 0 ? new Date(Date.now() + countdownMs).toISOString() : null);
+  const reason = readTrimmedString(lookupCaseInsensitive(record, ["reason", "status", "message", "detail"])) || null;
+  const available = typeof availableRaw === "boolean"
+    ? availableRaw
+    : typeof exhaustedRaw === "boolean"
+      ? !exhaustedRaw
+      : null;
+  const exhaustedByReason = /quota|exhaust|limit|capacity|cooldown|locked/i.test(reason ?? "");
+  const exhausted = typeof exhaustedRaw === "boolean"
+    ? exhaustedRaw
+    : available === false
+      ? true
+      : exhaustedByReason;
+  return {
+    connectionId: input.connection.id,
+    provider: input.connection.provider,
+    available,
+    exhausted,
+    resetAt: resolvedResetAt,
+    reason,
+    raw: record,
+  };
+}
+
+export async function list9RouterCombos(input: {
+  managementBaseUrl: string;
+  apiKey: string;
+  timeoutMs?: number;
+}) {
+  const payload = await fetch9RouterApiJson({
+    url: `${input.managementBaseUrl}/api/combos`,
+    apiKey: input.apiKey,
+    timeoutMs: input.timeoutMs,
+    service: "9router-management",
+    message: "Falha ao consultar /api/combos do 9Router",
+  });
+  return extractRecordArray(payload, ["combos"]);
+}
+
+export async function list9RouterConnections(input: {
+  managementBaseUrl: string;
+  apiKey: string;
+  timeoutMs?: number;
+}) {
+  const payload = await fetch9RouterApiJson({
+    url: `${input.managementBaseUrl}/api/providers`,
+    apiKey: input.apiKey,
+    timeoutMs: input.timeoutMs,
+    service: "9router-management",
+    message: "Falha ao consultar /api/providers do 9Router",
+  });
+  return extractRecordArray(payload, ["providers", "connections"]).map(parseProviderConnection).filter((entry): entry is NineRouterProviderConnection => Boolean(entry));
+}
+
+export async function get9RouterConnectionUsage(input: {
+  managementBaseUrl: string;
+  apiKey: string;
+  connectionId: string;
+  timeoutMs?: number;
+}) {
+  return await fetch9RouterApiJson({
+    url: `${input.managementBaseUrl}/api/usage/${encodeURIComponent(input.connectionId)}`,
+    apiKey: input.apiKey,
+    timeoutMs: input.timeoutMs,
+    service: "9router-management",
+    message: `Falha ao consultar /api/usage/${input.connectionId} do 9Router`,
+  });
+}
+
+export async function list9RouterRequestLogs(input: {
+  managementBaseUrl: string;
+  apiKey: string;
+  timeoutMs?: number;
+}) {
+  const payload = await fetch9RouterApiJson({
+    url: `${input.managementBaseUrl}/api/usage/request-logs`,
+    apiKey: input.apiKey,
+    timeoutMs: input.timeoutMs,
+    service: "9router-management",
+    message: "Falha ao consultar /api/usage/request-logs do 9Router",
+  });
+  return extractRecordArray(payload, ["logs", "requests", "items"]).map(parseRequestLogEntry).filter((entry): entry is NineRouterManagementRequestLogEntry => Boolean(entry));
+}
+
+export async function list9RouterRequestDetails(input: {
+  managementBaseUrl: string;
+  apiKey: string;
+  filters?: Record<string, string | number | null | undefined>;
+  timeoutMs?: number;
+}) {
+  const url = new URL(`${input.managementBaseUrl}/api/usage/request-details`);
+  for (const [key, value] of Object.entries(input.filters ?? {})) {
+    if (value === null || value === undefined || value === "") continue;
+    url.searchParams.set(key, String(value));
+  }
+  const payload = await fetch9RouterApiJson({
+    url: url.toString(),
+    apiKey: input.apiKey,
+    timeoutMs: input.timeoutMs,
+    service: "9router-management",
+    message: "Falha ao consultar /api/usage/request-details do 9Router",
+  });
+  return extractRecordArray(payload, ["requests", "items", "details"]).map(parseRequestLogEntry).filter((entry): entry is NineRouterManagementRequestLogEntry => Boolean(entry));
+}
+
+export async function compute9RouterComboCapacity(input: {
+  managementBaseUrl: string;
+  apiKey: string;
+  combo: string;
+  timeoutMs?: number;
+}): Promise<NineRouterComboCapacity> {
+  const [combos, connections] = await Promise.all([
+    list9RouterCombos(input),
+    list9RouterConnections(input),
+  ]);
+  const combo = combos.find((entry) => readTrimmedString(lookupCaseInsensitive(entry, ["id", "name", "combo"])) === input.combo) ?? null;
+  if (!combo) {
+    throw new NineRouterDiscoveryError({
+      code: "not_found",
+      status: 404,
+      message: `O combo \"${input.combo}\" não foi encontrado em /api/combos do 9Router.`,
+    });
+  }
+  const comboConnectionIds = new Set(extractConnectionsFromCombo(combo));
+  const eligibleConnections = connections.filter((connection) =>
+    comboConnectionIds.size > 0 ? comboConnectionIds.has(connection.id) : true
+  );
+  const usageStates = await Promise.all(
+    eligibleConnections.map(async (connection) =>
+      parseQuotaState({
+        connection,
+        usagePayload: await get9RouterConnectionUsage({
+          managementBaseUrl: input.managementBaseUrl,
+          apiKey: input.apiKey,
+          connectionId: connection.id,
+          timeoutMs: input.timeoutMs,
+        }),
+      })
+    ),
+  );
+  const availableConnections = usageStates.filter((entry) => entry.available === true || (!entry.exhausted && entry.available !== false));
+  const retryAt = usageStates
+    .map((entry) => entry.resetAt)
+    .filter((value): value is string => Boolean(value))
+    .sort()[0] ?? null;
+  return {
+    combo: input.combo,
+    available: availableConnections.length > 0,
+    retryAt,
+    reason: availableConnections.length > 0 ? null : "quota_exhausted",
+    connections: usageStates,
+  };
 }
 
 export function reset9RouterModelsCacheForTests() {

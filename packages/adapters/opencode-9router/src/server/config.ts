@@ -136,6 +136,7 @@ export function buildNineRouterOpenCodeConfig(input: {
     service: "9router-runtime-config",
     message: "9Router temporary OpenCode config created",
     baseUrl: input.resolved.normalizedBaseUrl,
+    managementBaseUrl: input.resolved.managementBaseUrl,
     combo: input.primaryCombo,
     comboCount: comboIds.length,
   }));
@@ -145,6 +146,7 @@ export function buildNineRouterOpenCodeConfig(input: {
     model: `${OPENCODE_NINEROUTER_PROVIDER_ID}/${input.primaryCombo}`,
     paperclipNineRouter: {
       baseUrl: input.resolved.normalizedBaseUrl,
+      managementBaseUrl: input.resolved.managementBaseUrl,
       apiKeyEnv: input.resolved.apiKeyEnv,
       combos: comboIds,
       smallCombo: input.smallCombo,

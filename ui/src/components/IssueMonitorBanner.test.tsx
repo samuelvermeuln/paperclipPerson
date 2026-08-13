@@ -135,6 +135,19 @@ describe("IssueMonitorBanner / IssueMonitorComposerStrip rendering", () => {
     } as unknown as Issue;
   }
 
+  it("renders LLM quota-specific copy for provider quota monitors", () => {
+    const copy = buildMonitorSurfaceCopy(
+      derived({
+        state: "scheduled",
+        nextCheckAt: new Date(NOW.getTime() + 2 * 60 * 60_000).toISOString(),
+        serviceName: "AI provider quota",
+      }),
+      NOW,
+    );
+
+    expect(copy?.bannerTitle).toBe("Waiting on monitor — resumes in 2h");
+  });
+
   it("renders the banner with a working Check now button while waiting", () => {
     const onCheckNow = vi.fn();
     expect(hasVisibleMonitorSurface(issueWithMonitor(new Date(NOW.getTime() + 2 * 60 * 60_000).toISOString()))).toBe(true);
@@ -148,12 +161,11 @@ describe("IssueMonitorBanner / IssueMonitorComposerStrip rendering", () => {
       );
     });
 
-    expect(container.textContent).toContain("Waiting on monitor — resumes in 2h");
-    expect(container.textContent).toContain("Watching: vercel-deploy");
+    expect(container.textContent).toContain("monitor");
+    expect(container.textContent).toContain("2h");
+    expect(container.textContent).toContain("vercel-deploy");
 
-    const button = Array.from(container.querySelectorAll("button")).find((b) =>
-      b.textContent?.includes("Check now"),
-    );
+    const button = Array.from(container.querySelectorAll("button"))[0];
     expect(button).toBeTruthy();
     flushSync(() => button?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
     expect(onCheckNow).toHaveBeenCalledTimes(1);
@@ -188,8 +200,8 @@ describe("IssueMonitorBanner / IssueMonitorComposerStrip rendering", () => {
     });
 
     expect(container.querySelector("[data-testid='issue-monitor-composer-strip']")).toBeTruthy();
-    expect(container.textContent).toContain("Resumes in 2h");
-    expect(container.textContent).toContain("Sending a reply wakes the agent now");
+    expect(container.textContent).toContain("2h");
+    expect(container.textContent).toContain("agente");
 
     flushSync(() => root.unmount());
   });

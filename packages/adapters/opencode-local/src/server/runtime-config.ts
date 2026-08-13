@@ -94,12 +94,14 @@ function parseConfiguredModelRef(raw: unknown): { provider: string; model: strin
 
 function parseNineRouterRuntimeConfig(raw: unknown): {
   baseUrl: string;
+  managementBaseUrl: string | null;
   apiKeyEnv: string;
   combos: string[];
   smallCombo: string | null;
 } | null {
   if (!isPlainObject(raw)) return null;
   const baseUrl = typeof raw.baseUrl === "string" ? raw.baseUrl.trim() : "";
+  const managementBaseUrl = typeof raw.managementBaseUrl === "string" ? raw.managementBaseUrl.trim() : "";
   const apiKeyEnv = typeof raw.apiKeyEnv === "string" ? raw.apiKeyEnv.trim() : "";
   const combos = Array.isArray(raw.combos)
     ? raw.combos.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0)
@@ -108,7 +110,7 @@ function parseNineRouterRuntimeConfig(raw: unknown): {
     ? raw.smallCombo.trim()
     : null;
   if (!baseUrl || !apiKeyEnv || combos.length === 0) return null;
-  return { baseUrl, apiKeyEnv, combos, smallCombo };
+  return { baseUrl, managementBaseUrl: managementBaseUrl || null, apiKeyEnv, combos, smallCombo };
 }
 
 function buildNineRouterProviderConfig(input: {

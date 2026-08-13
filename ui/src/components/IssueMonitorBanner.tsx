@@ -123,6 +123,7 @@ function buildLocalizedMonitorSurfaceCopy(
   const eta = formatMonitorEta(derived.nextCheckAt, now);
   const absolute = formatMonitorAbsolute(derived.nextCheckAt, {}, now);
   const isScheduledRetryOnly = derived.source === "scheduled-retry";
+  const isProviderQuota = derived.serviceName === "AI provider quota";
 
   let bannerTitle: string;
   let stripTitle: string;
@@ -132,13 +133,17 @@ function buildLocalizedMonitorSurfaceCopy(
     case "retrying":
       bannerTitle = isScheduledRetryOnly
         ? t("issueDetailPage.monitor.agentResumes", { eta })
-        : t("issueDetailPage.monitor.waitingOnMonitorResumes", { eta });
-      stripTitle = t("issueDetailPage.monitor.resumes", { eta });
+        : isProviderQuota
+          ? `Waiting for LLM quota — resumes ${eta}`
+          : t("issueDetailPage.monitor.waitingOnMonitorResumes", { eta });
+      stripTitle = isProviderQuota ? `LLM quota resumes ${eta}` : t("issueDetailPage.monitor.resumes", { eta });
       break;
     case "due-now":
       bannerTitle = isScheduledRetryOnly
         ? t("issueDetailPage.monitor.agentRetryDueNow")
-        : t("issueDetailPage.monitor.waitingOnMonitorDueNow");
+        : isProviderQuota
+          ? "Waiting for LLM quota — due now"
+          : t("issueDetailPage.monitor.waitingOnMonitorDueNow");
       stripTitle = t("issueDetailPage.monitor.dueNow");
       statusHint = t("issueDetailPage.monitor.checkingMomentarily");
       break;
@@ -146,7 +151,9 @@ function buildLocalizedMonitorSurfaceCopy(
     default:
       bannerTitle = isScheduledRetryOnly
         ? t("issueDetailPage.monitor.agentRetryEta", { eta })
-        : t("issueDetailPage.monitor.waitingOnMonitorEta", { eta });
+        : isProviderQuota
+          ? `Waiting for LLM quota — ${eta}`
+          : t("issueDetailPage.monitor.waitingOnMonitorEta", { eta });
       stripTitle = capitalize(eta);
       statusHint = t("issueDetailPage.monitor.firesOnNextTick");
       break;

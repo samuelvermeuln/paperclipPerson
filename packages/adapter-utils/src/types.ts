@@ -144,6 +144,7 @@ export interface AdapterInvocationMeta {
   env?: Record<string, string>;
   prompt?: string;
   promptMetrics?: Record<string, number>;
+  promptDiagnostics?: Record<string, unknown>;
   context?: Record<string, unknown>;
 }
 

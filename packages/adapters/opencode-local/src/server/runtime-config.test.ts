@@ -178,6 +178,7 @@ describe("prepareOpenCodeRuntimeConfig", () => {
       config: {
         paperclipNineRouter: {
           baseUrl: "http://9router:20128/v1",
+          managementBaseUrl: "http://9router:20128",
           apiKeyEnv: "NINEROUTER_API_KEY",
           combos: ["auto", "dev"],
           smallCombo: "auto",
@@ -341,6 +342,7 @@ describe("prepareOpenCodeRuntimeConfig", () => {
         dangerouslySkipPermissions: false,
         paperclipNineRouter: {
           baseUrl: "http://9router:20128/v1",
+          managementBaseUrl: "http://9router:20128",
           apiKeyEnv: "NINEROUTER_API_KEY",
           combos: ["auto", "dev"],
           smallCombo: "auto",

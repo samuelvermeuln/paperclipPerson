@@ -365,6 +365,7 @@ describe("opencode_9router discovery helpers", () => {
       originalConfig: { command: "opencode" },
       resolved: {
         normalizedBaseUrl: "http://9router:20128/v1",
+        managementBaseUrl: "http://9router:20128",
         apiKeyEnv: "NINEROUTER_API_KEY",
         apiKey: "secret",
         comboPrefix: "",
@@ -392,11 +393,24 @@ describe("opencode_9router discovery helpers", () => {
     expect(translated.model).toBe("9router/combo/dev");
     expect(translated.paperclipNineRouter).toEqual({
       baseUrl: "http://9router:20128/v1",
+      managementBaseUrl: "http://9router:20128",
       apiKeyEnv: "NINEROUTER_API_KEY",
       combos: ["auto", "combo/dev"],
       smallCombo: "auto",
     });
     expect((translated.env as Record<string, string>).NINEROUTER_API_KEY).toBe("secret");
+  });
+
+  it("derives management base URLs without losing path prefixes", () => {
+    const resolved = resolve9RouterConfig({
+      baseUrl: "https://router.example.com/ninerouter/v1",
+      apiKeyEnv: "NINEROUTER_API_KEY",
+    }, {
+      NINEROUTER_API_KEY: "secret",
+    });
+
+    expect(resolved.normalizedBaseUrl).toBe("https://router.example.com/ninerouter/v1");
+    expect(resolved.managementBaseUrl).toBe("https://router.example.com/ninerouter");
   });
 
   it("does not print the API key in discovery logs", async () => {

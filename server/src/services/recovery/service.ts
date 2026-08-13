@@ -5810,5 +5810,8 @@ export function recoveryService(db: Db, deps: { enqueueWakeup: RecoveryWakeup })
     reconcileResolvedDependencyWakeBackstop,
     reconcileIssueGraphLiveness,
     readRecoveryTimerIntervalMs,
+    classifyAdapterFailureForRecovery,
+    scheduleProviderQuotaRecoveryMonitor,
+    persistAdapterFailureRecoveryClassification,
   };
 }

@@ -627,7 +627,7 @@ function readTransientRecoveryContractFromRun(
   run: Pick<typeof heartbeatRuns.$inferSelect, "errorCode" | "resultJson">,
 ) {
   const errorFamily = readHeartbeatRunErrorFamily(run);
-  return errorFamily === "transient_upstream" || errorFamily === "provider_quota"
+  return errorFamily === "transient_upstream"
     ? {
         errorFamily,
         retryNotBefore: readTransientRetryNotBeforeFromRun(run),
@@ -16606,6 +16606,23 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
               },
             });
           }
+        } else if (outcome === "failed" && readHeartbeatRunErrorFamily(livenessRun) === "provider_quota") {
+          const classification = recovery.classifyAdapterFailureForRecovery(livenessRun, new Date());
+          if (classification?.kind === "provider_quota" && issueId) {
+            const monitorIssue = await db
+              .select()
+              .from(issues)
+              .where(and(eq(issues.id, issueId), eq(issues.companyId, livenessRun.companyId)))
+              .then((rows) => rows[0] ?? null);
+            if (monitorIssue) {
+              const classifiedRun = await recovery.persistAdapterFailureRecoveryClassification(livenessRun, classification);
+              await recovery.scheduleProviderQuotaRecoveryMonitor({
+                issue: monitorIssue,
+                latestRun: classifiedRun,
+                classification,
+              });
+            }
+          }
         } else if (outcome === "failed" && readTransientRecoveryContractFromRun(livenessRun)) {
           await scheduleBoundedRetryForRun(livenessRun, agent);
         }
@@ -18105,6 +18122,8 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
             assigneeAgentId: issues.assigneeAgentId,
             executionRunId: issues.executionRunId,
             executionAgentNameKey: issues.executionAgentNameKey,
+            executionPolicy: issues.executionPolicy,
+            monitorNextCheckAt: issues.monitorNextCheckAt,
             createdAt: issues.createdAt,
           })
           .from(issues)
@@ -18385,6 +18404,35 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
             issue.id,
             dependencyReadiness.unresolvedBlockerIssueIds,
           );
+        }
+
+        const providerQuotaMonitor = normalizeIssueExecutionPolicy(issue.executionPolicy ?? null)?.monitor ?? null;
+        const providerQuotaWaitActive =
+          readNonEmptyString(providerQuotaMonitor?.serviceName) === PROVIDER_QUOTA_MONITOR_SERVICE_NAME &&
+          issue.monitorNextCheckAt &&
+          issue.monitorNextCheckAt.getTime() > Date.now() &&
+          readNonEmptyString(enrichedContextSnapshot.wakeReason) !== "issue_monitor_due";
+
+        if (providerQuotaWaitActive) {
+          await tx.insert(agentWakeupRequests).values({
+            companyId: agent.companyId,
+            agentId,
+            source,
+            triggerDetail,
+            reason: "provider_quota_wait",
+            payload: {
+              ...(payload ?? {}),
+              issueId,
+              retryAt: issue.monitorNextCheckAt?.toISOString() ?? null,
+              combo: readNonEmptyString(providerQuotaMonitor?.externalRef) ?? null,
+            },
+            status: "skipped",
+            requestedByActorType: opts.requestedByActorType ?? null,
+            requestedByActorId: opts.requestedByActorId ?? null,
+            idempotencyKey: opts.idempotencyKey ?? null,
+            finishedAt: new Date(),
+          });
+          return { kind: "skipped" as const };
         }
 
         if (!activeExecutionRun && dependencyReadiness && !dependencyReadiness.isDependencyReady && !blockedInteractionWake) {
