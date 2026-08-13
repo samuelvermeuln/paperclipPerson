@@ -207,6 +207,13 @@ export const completeRegistrationSchema = z.discriminatedUnion("registrationKind
 export const authProvidersResponseSchema = z.object({
   google: z.object({
     enabled: z.boolean(),
+    diagnostics: z.object({
+      hasClientId: z.boolean(),
+      hasClientSecret: z.boolean(),
+      authBaseUrlMode: z.string().nullable(),
+      hasPublicBaseUrl: z.boolean(),
+      publicBaseUrl: z.string().nullable(),
+    }).optional(),
   }),
 });
 

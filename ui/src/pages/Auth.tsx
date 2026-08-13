@@ -76,6 +76,7 @@ export function AuthPage() {
   });
 
   const googleEnabled = providersQuery.data?.google.enabled ?? false;
+  const googleDiagnostics = providersQuery.data?.google.diagnostics;
 
   useEffect(() => {
     if (session && !isCompletionMode) {
@@ -251,10 +252,21 @@ export function AuthPage() {
                 Continuar com Google
               </Button>
               {!googleEnabled ? (
-                <p className="text-xs text-muted-foreground">
-                  Login com Google indisponível nesta instância. Configure `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`,
-                  `PAPERCLIP_AUTH_BASE_URL_MODE=explicit` e `PAPERCLIP_AUTH_PUBLIC_BASE_URL`.
-                </p>
+                <div className="space-y-2 text-xs text-muted-foreground">
+                  <p>
+                    Login com Google indisponível nesta instância.
+                  </p>
+                  <p>
+                    Processo atual detectou:
+                    {` GOOGLE_CLIENT_ID=${googleDiagnostics?.hasClientId ? "OK" : "AUSENTE"},`}
+                    {` GOOGLE_CLIENT_SECRET=${googleDiagnostics?.hasClientSecret ? "OK" : "AUSENTE"},`}
+                    {` PAPERCLIP_AUTH_BASE_URL_MODE=${googleDiagnostics?.authBaseUrlMode ?? "AUSENTE"},`}
+                    {` PAPERCLIP_AUTH_PUBLIC_BASE_URL=${googleDiagnostics?.hasPublicBaseUrl ? "OK" : "AUSENTE"}`}
+                  </p>
+                  {googleDiagnostics?.publicBaseUrl ? (
+                    <p>{`PAPERCLIP_AUTH_PUBLIC_BASE_URL atual: ${googleDiagnostics.publicBaseUrl}`}</p>
+                  ) : null}
+                </div>
               ) : null}
               <div className="flex items-center gap-3 text-xs text-muted-foreground">
                 <div className="h-px flex-1 bg-border" />

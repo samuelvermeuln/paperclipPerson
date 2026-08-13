@@ -42,15 +42,24 @@ export function authRoutes(db: Db) {
   const router = Router();
 
   router.get("/providers", async (_req, res) => {
-    const hasGoogleClientId = Boolean(process.env.GOOGLE_CLIENT_ID?.trim());
-    const hasGoogleClientSecret = Boolean(process.env.GOOGLE_CLIENT_SECRET?.trim());
-    const hasExplicitBaseUrl =
-      process.env.PAPERCLIP_AUTH_BASE_URL_MODE?.trim() === "explicit" &&
-      Boolean(process.env.PAPERCLIP_AUTH_PUBLIC_BASE_URL?.trim());
+    const clientId = process.env.GOOGLE_CLIENT_ID?.trim() || "";
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim() || "";
+    const authBaseUrlMode = process.env.PAPERCLIP_AUTH_BASE_URL_MODE?.trim() || null;
+    const publicBaseUrl = process.env.PAPERCLIP_AUTH_PUBLIC_BASE_URL?.trim() || null;
+    const hasGoogleClientId = Boolean(clientId);
+    const hasGoogleClientSecret = Boolean(clientSecret);
+    const hasExplicitBaseUrl = authBaseUrlMode === "explicit" && Boolean(publicBaseUrl);
 
     res.json(authProvidersResponseSchema.parse({
       google: {
         enabled: hasGoogleClientId && hasGoogleClientSecret && hasExplicitBaseUrl,
+        diagnostics: {
+          hasClientId: hasGoogleClientId,
+          hasClientSecret: hasGoogleClientSecret,
+          authBaseUrlMode,
+          hasPublicBaseUrl: Boolean(publicBaseUrl),
+          publicBaseUrl,
+        },
       },
     }));
   });

@@ -80,7 +80,18 @@ describe.sequential("auth routes", () => {
     const res = await request(app).get("/api/auth/providers");
 
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ google: { enabled: true } });
+    expect(res.body).toEqual({
+      google: {
+        enabled: true,
+        diagnostics: {
+          hasClientId: true,
+          hasClientSecret: true,
+          authBaseUrlMode: "explicit",
+          hasPublicBaseUrl: true,
+          publicBaseUrl: "https://paperclip.example.test",
+        },
+      },
+    });
 
     if (originalGoogleClientId === undefined) delete process.env.GOOGLE_CLIENT_ID;
     else process.env.GOOGLE_CLIENT_ID = originalGoogleClientId;
