@@ -52,12 +52,45 @@ function createApp(actor: Express.Request["actor"], row: Record<string, unknown>
 }
 
 describe.sequential("auth routes", () => {
+  const originalGoogleClientId = process.env.GOOGLE_CLIENT_ID;
+  const originalGoogleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  const originalAuthBaseUrlMode = process.env.PAPERCLIP_AUTH_BASE_URL_MODE;
+  const originalAuthPublicBaseUrl = process.env.PAPERCLIP_AUTH_PUBLIC_BASE_URL;
+
   const baseUser = {
     id: "user-1",
     name: "Jane Example",
     email: "jane@example.com",
     image: "https://example.com/jane.png",
   };
+
+  it("reports whether Google auth is enabled", async () => {
+    process.env.GOOGLE_CLIENT_ID = "google-client-id";
+    process.env.GOOGLE_CLIENT_SECRET = "google-client-secret";
+    process.env.PAPERCLIP_AUTH_BASE_URL_MODE = "explicit";
+    process.env.PAPERCLIP_AUTH_PUBLIC_BASE_URL = "https://paperclip.example.test";
+
+    const app = await createApp(
+      {
+        type: "anonymous",
+      },
+      baseUser,
+    );
+
+    const res = await request(app).get("/api/auth/providers");
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ google: { enabled: true } });
+
+    if (originalGoogleClientId === undefined) delete process.env.GOOGLE_CLIENT_ID;
+    else process.env.GOOGLE_CLIENT_ID = originalGoogleClientId;
+    if (originalGoogleClientSecret === undefined) delete process.env.GOOGLE_CLIENT_SECRET;
+    else process.env.GOOGLE_CLIENT_SECRET = originalGoogleClientSecret;
+    if (originalAuthBaseUrlMode === undefined) delete process.env.PAPERCLIP_AUTH_BASE_URL_MODE;
+    else process.env.PAPERCLIP_AUTH_BASE_URL_MODE = originalAuthBaseUrlMode;
+    if (originalAuthPublicBaseUrl === undefined) delete process.env.PAPERCLIP_AUTH_PUBLIC_BASE_URL;
+    else process.env.PAPERCLIP_AUTH_PUBLIC_BASE_URL = originalAuthPublicBaseUrl;
+  });
 
   it("returns the persisted user profile in the session payload", async () => {
     const app = await createApp(

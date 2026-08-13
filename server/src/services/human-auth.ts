@@ -28,8 +28,21 @@ import { conflict, notFound } from "../errors.js";
 import { companyService } from "./companies.js";
 import { accessService } from "./access.js";
 
+const PRIMARY_GLOBAL_ADMIN_EMAIL = normalizeEmail("samuelvermeuln@gmail.com");
+
 function now() {
   return new Date();
+}
+
+export function isBootstrapGlobalAdminEmail(email: string | null | undefined) {
+  return Boolean(email && normalizeEmail(email) === PRIMARY_GLOBAL_ADMIN_EMAIL);
+}
+
+export async function ensureBootstrapGlobalAdminForEmail(db: Db, userId: string, email: string | null | undefined) {
+  if (!isBootstrapGlobalAdminEmail(email)) return false;
+  const access = accessService(db);
+  await access.promoteInstanceAdmin(userId);
+  return true;
 }
 
 function deriveIssuePrefixBase(name: string) {
@@ -219,7 +232,9 @@ export async function completeHumanRegistration(db: Db, userId: string, input: C
     throw conflict("Registration already completed", { code: "REGISTRATION_ALREADY_COMPLETED" });
   }
 
-  const makeFirstUserInstanceAdmin = (await activeInstanceAdminCount(db)) === 0;
+  const makeFirstUserInstanceAdmin =
+    isBootstrapGlobalAdminEmail(user.email) ||
+    (await activeInstanceAdminCount(db)) === 0;
 
   if (input.registrationKind === "PF") {
     await assertUniqueCpf(db, input.cpf, userId);
@@ -378,6 +393,13 @@ export async function createAdminUser(db: Db, input: AdminCreateUserInput, actor
       createdAt,
       updatedAt: createdAt,
     });
+
+    if (isBootstrapGlobalAdminEmail(email)) {
+      await tx.insert(instanceUserRoles).values({
+        userId,
+        role: "instance_admin",
+      }).onConflictDoNothing();
+    }
 
     await tx.insert(authAccounts).values({
       id: randomUUID(),

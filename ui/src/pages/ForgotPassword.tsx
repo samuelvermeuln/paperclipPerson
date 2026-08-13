@@ -14,11 +14,11 @@ export function ForgotPasswordPage() {
     <div className="fixed inset-0 flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-md space-y-4 rounded-lg border border-border bg-card p-6">
         <div>
-          <h1 className="text-lg font-semibold">Forgot password</h1>
-          <p className="text-sm text-muted-foreground">Request reset code by email.</p>
+          <h1 className="text-lg font-semibold">Recuperar senha</h1>
+          <p className="text-sm text-muted-foreground">Solicite código de redefinição por e-mail.</p>
         </div>
         <div>
-          <label htmlFor="forgot-email" className="mb-1 block text-xs text-muted-foreground">Email</label>
+          <label htmlFor="forgot-email" className="mb-1 block text-xs text-muted-foreground">E-mail</label>
           <input
             id="forgot-email"
             type="email"
@@ -28,7 +28,7 @@ export function ForgotPasswordPage() {
           />
         </div>
         {error ? <p className="text-xs text-destructive">{error}</p> : null}
-        {submitted ? <p className="text-xs text-emerald-600">If account exists, code was sent.</p> : null}
+        {submitted ? <p className="text-xs text-emerald-600">Se a conta existir, o código foi enviado.</p> : null}
         <div className="flex gap-3">
           <Button
             type="button"
@@ -36,7 +36,7 @@ export function ForgotPasswordPage() {
             className="flex-1"
             onClick={() => navigate("/auth", { replace: true })}
           >
-            Back
+            Voltar
           </Button>
           <Button
             type="button"
@@ -50,13 +50,13 @@ export function ForgotPasswordPage() {
                 setSubmitted(true);
                 navigate(`/reset-password?email=${encodeURIComponent(email.trim())}`, { replace: true });
               } catch (err) {
-                setError(err instanceof Error ? err.message : "Failed to request reset code");
+                setError(err instanceof Error ? err.message : "Falha ao solicitar código de redefinição");
               } finally {
                 setLoading(false);
               }
             }}
           >
-            {loading ? "Sending..." : "Send code"}
+            {loading ? "Enviando..." : "Enviar código"}
           </Button>
         </div>
       </div>

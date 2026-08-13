@@ -16,6 +16,7 @@ import { eq } from "drizzle-orm";
 import { sendAuthOtpEmail } from "../services/auth-email.js";
 import type { Config } from "../config.js";
 import { resolvePaperclipInstanceId } from "../home-paths.js";
+import { ensureBootstrapGlobalAdminForEmail } from "../services/human-auth.js";
 
 export type BetterAuthSessionUser = {
   id: string;
@@ -276,6 +277,12 @@ export function createBetterAuthInstance(db: Db, config: Config, trustedOrigins:
               return { data: { ...user, emailVerifiedAt: new Date() } };
             }
             return undefined;
+          },
+          async after(user: Record<string, unknown> | null | undefined) {
+            const userId = typeof user?.id === "string" ? user.id : null;
+            const email = typeof user?.email === "string" ? user.email : null;
+            if (!userId) return;
+            await ensureBootstrapGlobalAdminForEmail(db, userId, email);
           },
         },
         update: {

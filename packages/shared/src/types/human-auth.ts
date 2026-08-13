@@ -6,6 +6,7 @@ export type {
   CompletePfRegistrationInput,
   CompletePjRegistrationInput,
   CompleteRegistrationInput,
+  AuthProvidersResponse,
   ForgotPasswordRequest,
   VerifyPasswordResetCodeInput,
   ResetPasswordWithCodeInput,

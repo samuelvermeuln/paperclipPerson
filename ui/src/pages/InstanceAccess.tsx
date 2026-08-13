@@ -99,9 +99,9 @@ export function InstanceAccess() {
 
   useEffect(() => {
     setBreadcrumbs([
-      { label: "Settings", href: "/company/settings" },
-      { label: "Instance settings", href: "/company/settings/instance/general" },
-      { label: "Access" },
+      { label: "Configurações", href: "/company/settings" },
+      { label: "Configurações da instância", href: "/company/settings/instance/general" },
+      { label: "Acesso" },
     ]);
   }, [setBreadcrumbs]);
 
@@ -185,10 +185,10 @@ export function InstanceAccess() {
     mutationFn: () => accessApi.setUserCompanyAccess(selectedUserId!, [...selectedCompanyIds]),
     onSuccess: async () => {
       await invalidateAdminState(selectedUserId);
-      pushToast({ title: "Company access updated", tone: "success" });
+      pushToast({ title: "Acesso à empresa atualizado", tone: "success" });
     },
     onError: (error) => {
-      pushToast({ title: mutationErrorTitle(error, "Failed to update company access"), tone: "error" });
+      pushToast({ title: mutationErrorTitle(error, "Falha ao atualizar acesso à empresa"), tone: "error" });
     },
   });
 
@@ -200,10 +200,10 @@ export function InstanceAccess() {
     },
     onSuccess: async () => {
       await invalidateAdminState(selectedUserId);
-      pushToast({ title: "Instance role updated", tone: "success" });
+      pushToast({ title: "Papel global atualizado", tone: "success" });
     },
     onError: (error) => {
-      pushToast({ title: mutationErrorTitle(error, "Failed to update instance role"), tone: "error" });
+      pushToast({ title: mutationErrorTitle(error, "Falha ao atualizar papel global"), tone: "error" });
     },
   });
 
@@ -226,10 +226,10 @@ export function InstanceAccess() {
       setSelectedUserId(userId);
       setCreateOpen(false);
       setCreateForm(emptyCreateUserForm);
-      pushToast({ title: "User created", tone: "success" });
+      pushToast({ title: "Usuário criado", tone: "success" });
     },
     onError: (error) => {
-      pushToast({ title: mutationErrorTitle(error, "Failed to create user"), tone: "error" });
+      pushToast({ title: mutationErrorTitle(error, "Falha ao criar usuário"), tone: "error" });
     },
   });
 
@@ -247,10 +247,10 @@ export function InstanceAccess() {
     onSuccess: async () => {
       await invalidateAdminState(selectedUserId);
       setEditOpen(false);
-      pushToast({ title: "User updated", tone: "success" });
+      pushToast({ title: "Usuário atualizado", tone: "success" });
     },
     onError: (error) => {
-      pushToast({ title: mutationErrorTitle(error, "Failed to update user"), tone: "error" });
+      pushToast({ title: mutationErrorTitle(error, "Falha ao atualizar usuário"), tone: "error" });
     },
   });
 
@@ -263,10 +263,10 @@ export function InstanceAccess() {
       await invalidateAdminState(selectedUserId);
       setBlockOpen(false);
       setBlockReason("");
-      pushToast({ title: "User blocked", tone: "success" });
+      pushToast({ title: "Usuário bloqueado", tone: "success" });
     },
     onError: (error) => {
-      pushToast({ title: mutationErrorTitle(error, "Failed to block user"), tone: "error" });
+      pushToast({ title: mutationErrorTitle(error, "Falha ao bloquear usuário"), tone: "error" });
     },
   });
 
@@ -277,10 +277,10 @@ export function InstanceAccess() {
     },
     onSuccess: async () => {
       await invalidateAdminState(selectedUserId);
-      pushToast({ title: "User unblocked", tone: "success" });
+      pushToast({ title: "Usuário desbloqueado", tone: "success" });
     },
     onError: (error) => {
-      pushToast({ title: mutationErrorTitle(error, "Failed to unblock user"), tone: "error" });
+      pushToast({ title: mutationErrorTitle(error, "Falha ao desbloquear usuário"), tone: "error" });
     },
   });
 
@@ -297,10 +297,10 @@ export function InstanceAccess() {
       await invalidateAdminState(selectedUserId);
       setResetPasswordOpen(false);
       setResetPasswordForm(emptyResetPasswordForm);
-      pushToast({ title: "Password reset", tone: "success" });
+      pushToast({ title: "Senha redefinida", tone: "success" });
     },
     onError: (error) => {
-      pushToast({ title: mutationErrorTitle(error, "Failed to reset password"), tone: "error" });
+      pushToast({ title: mutationErrorTitle(error, "Falha ao redefinir senha"), tone: "error" });
     },
   });
 
@@ -316,16 +316,16 @@ export function InstanceAccess() {
     resetPasswordForm.newPassword !== resetPasswordForm.confirmPassword;
 
   if (usersQuery.isLoading) {
-    return <div className="text-sm text-muted-foreground">Loading instance users…</div>;
+    return <div className="text-sm text-muted-foreground">Carregando usuários da instância…</div>;
   }
 
   if (usersQuery.error) {
     const message =
       usersQuery.error instanceof ApiError && usersQuery.error.status === 403
-        ? "Instance admin access is required to manage users."
+        ? "Acesso de administrador global é obrigatório para gerenciar usuários."
         : usersQuery.error instanceof Error
           ? usersQuery.error.message
-          : "Failed to load users.";
+          : "Falha ao carregar usuários.";
     return <div className="text-sm text-destructive">{message}</div>;
   }
 
@@ -335,10 +335,10 @@ export function InstanceAccess() {
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <Shield className="h-5 w-5 text-muted-foreground" />
-            <h1 className="text-lg font-semibold">Instance Access</h1>
+            <h1 className="text-lg font-semibold">Acesso global</h1>
           </div>
           <p className="max-w-3xl text-sm text-muted-foreground">
-            Search users, create accounts, manage blocked status, assign instance-admin status, and control company access.
+            Pesquise usuários, crie contas, gerencie bloqueios, atribua administração global e controle acesso às empresas.
           </p>
         </div>
 
@@ -346,16 +346,16 @@ export function InstanceAccess() {
           <Card className="block space-y-4 p-4">
             <div className="flex items-center justify-between gap-3">
               <label className="block flex-1 space-y-2 text-sm">
-                <span className="font-medium">Search users</span>
+                <span className="font-medium">Buscar usuários</span>
                 <input
                   className="w-full rounded-md border border-border bg-background px-3 py-2"
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Search by name or email"
+                  placeholder="Buscar por nome ou e-mail"
                 />
               </label>
               <Button type="button" className="self-end" onClick={() => setCreateOpen(true)}>
-                New user
+                Novo usuário
               </Button>
             </div>
             <div className="space-y-2">
@@ -385,7 +385,7 @@ export function InstanceAccess() {
                     </div>
                   </div>
                   <div className="mt-2 text-xs text-muted-foreground">
-                    {user.activeCompanyMembershipCount} active company memberships
+                    {user.activeCompanyMembershipCount} memberships ativas em empresas
                   </div>
                 </button>
               ))}
@@ -394,12 +394,12 @@ export function InstanceAccess() {
 
           <Card className="block space-y-4 p-5">
             {!selectedUserId ? (
-              <div className="text-sm text-muted-foreground">Select a user to inspect instance access.</div>
+              <div className="text-sm text-muted-foreground">Selecione um usuário para inspecionar acesso global.</div>
             ) : userAccessQuery.isLoading ? (
-              <div className="text-sm text-muted-foreground">Loading user access…</div>
+              <div className="text-sm text-muted-foreground">Carregando acesso do usuário…</div>
             ) : userAccessQuery.error ? (
               <div className="text-sm text-destructive">
-                {userAccessQuery.error instanceof Error ? userAccessQuery.error.message : "Failed to load user access."}
+                {userAccessQuery.error instanceof Error ? userAccessQuery.error.message : "Falha ao carregar acesso do usuário."}
               </div>
             ) : (
               <>
@@ -426,10 +426,10 @@ export function InstanceAccess() {
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Button type="button" variant="outline" onClick={() => setEditOpen(true)}>
-                      Edit user
+                      Editar usuário
                     </Button>
                     <Button type="button" variant="outline" onClick={() => setResetPasswordOpen(true)}>
-                      Reset password
+                      Redefinir senha
                     </Button>
                     {selectedUserStatus === "BLOCKED" ? (
                       <Button
@@ -438,11 +438,11 @@ export function InstanceAccess() {
                         onClick={() => unblockMutation.mutate()}
                         disabled={unblockMutation.isPending}
                       >
-                        {unblockMutation.isPending ? "Unblocking…" : "Unblock user"}
+                        {unblockMutation.isPending ? "Desbloqueando…" : "Desbloquear usuário"}
                       </Button>
                     ) : (
                       <Button type="button" variant="destructive" onClick={() => setBlockOpen(true)}>
-                        Block user
+                        Bloquear usuário
                       </Button>
                     )}
                     <Button
@@ -452,17 +452,17 @@ export function InstanceAccess() {
                       disabled={setAdminMutation.isPending}
                     >
                       {setAdminMutation.isPending
-                        ? "Saving…"
+                        ? "Salvando…"
                         : selectedUser?.isInstanceAdmin
-                          ? "Remove instance admin"
-                          : "Promote to instance admin"}
+                          ? "Remover administrador global"
+                          : "Promover a administrador global"}
                     </Button>
                   </div>
                 </div>
 
                 <div className="grid gap-3 md:grid-cols-3">
                   <div className="rounded-lg border border-border px-3 py-3 text-sm">
-                    <div className="text-xs text-muted-foreground">Email</div>
+                    <div className="text-xs text-muted-foreground">E-mail</div>
                     <div className="mt-1 break-all font-medium">{selectedUserDetails?.email || "—"}</div>
                   </div>
                   <div className="rounded-lg border border-border px-3 py-3 text-sm">
@@ -470,16 +470,16 @@ export function InstanceAccess() {
                     <div className="mt-1 font-medium">{selectedUserDetails?.cpf || "—"}</div>
                   </div>
                   <div className="rounded-lg border border-border px-3 py-3 text-sm">
-                    <div className="text-xs text-muted-foreground">Phone</div>
+                    <div className="text-xs text-muted-foreground">Telefone</div>
                     <div className="mt-1 font-medium">{selectedUserDetails?.phone || "—"}</div>
                   </div>
                 </div>
 
                 <div className="space-y-3">
                   <div>
-                    <h2 className="text-sm font-semibold">Company access</h2>
+                    <h2 className="text-sm font-semibold">Acesso às empresas</h2>
                     <p className="text-sm text-muted-foreground">
-                      Toggle company membership for this user. New access defaults to an active operator membership.
+                      Ative ou remova membership de empresa para este usuário. Novo acesso usa membership ativa do tipo operator por padrão.
                     </p>
                   </div>
                   <div className="grid gap-3 md:grid-cols-2">
@@ -512,13 +512,13 @@ export function InstanceAccess() {
                       onClick={() => updateCompanyAccessMutation.mutate()}
                       disabled={updateCompanyAccessMutation.isPending}
                     >
-                      {updateCompanyAccessMutation.isPending ? "Saving…" : "Save company access"}
+                      {updateCompanyAccessMutation.isPending ? "Salvando…" : "Salvar acesso às empresas"}
                     </Button>
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <h2 className="text-sm font-semibold">Current memberships</h2>
+                  <h2 className="text-sm font-semibold">Memberships atuais</h2>
                   <div className="space-y-2">
                     {(userAccessQuery.data?.companyAccess ?? []).map((membership) => (
                       <div
@@ -546,9 +546,9 @@ export function InstanceAccess() {
         <Card className="block space-y-4 p-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <h2 className="text-lg font-semibold">Companies</h2>
+              <h2 className="text-lg font-semibold">Empresas</h2>
               <p className="text-sm text-muted-foreground">
-                Review companies, inspect memberships, and jump into company-scoped management.
+                Revise empresas, inspecione memberships e entre no gerenciamento escopado por empresa.
               </p>
             </div>
             {selectedAdminCompanyId ? (
@@ -560,7 +560,7 @@ export function InstanceAccess() {
                   navigate("/company/settings/members");
                 }}
               >
-                Open company access
+                Abrir acesso da empresa
               </Button>
             ) : null}
           </div>
@@ -593,29 +593,29 @@ export function InstanceAccess() {
 
             <div className="space-y-4">
               {!selectedAdminCompanyId ? (
-                <div className="text-sm text-muted-foreground">Select a company to inspect memberships.</div>
+                <div className="text-sm text-muted-foreground">Selecione uma empresa para inspecionar memberships.</div>
               ) : companyMembersQuery.isLoading ? (
-                <div className="text-sm text-muted-foreground">Loading company memberships…</div>
+                <div className="text-sm text-muted-foreground">Carregando memberships da empresa…</div>
               ) : companyMembersQuery.error ? (
                 <div className="text-sm text-destructive">
-                  {companyMembersQuery.error instanceof Error ? companyMembersQuery.error.message : "Failed to load company memberships."}
+                  {companyMembersQuery.error instanceof Error ? companyMembersQuery.error.message : "Falha ao carregar memberships da empresa."}
                 </div>
               ) : (
                 <>
                   <div className="grid gap-3 md:grid-cols-3">
                     <div className="rounded-lg border border-border px-3 py-3 text-sm">
-                      <div className="text-xs text-muted-foreground">Company</div>
+                      <div className="text-xs text-muted-foreground">Empresa</div>
                       <div className="mt-1 font-medium">
                         {companies.find((company) => company.id === selectedAdminCompanyId)?.name ?? selectedAdminCompanyId}
                       </div>
                     </div>
                     <div className="rounded-lg border border-border px-3 py-3 text-sm">
-                      <div className="text-xs text-muted-foreground">Members</div>
+                      <div className="text-xs text-muted-foreground">Membros</div>
                       <div className="mt-1 font-medium">{companyMembersQuery.data?.members.length ?? 0}</div>
                     </div>
                     <div className="rounded-lg border border-border px-3 py-3 text-sm">
-                      <div className="text-xs text-muted-foreground">Can manage members</div>
-                      <div className="mt-1 font-medium">{companyMembersQuery.data?.access.canManageMembers ? "Yes" : "No"}</div>
+                      <div className="text-xs text-muted-foreground">Pode gerenciar membros</div>
+                      <div className="mt-1 font-medium">{companyMembersQuery.data?.access.canManageMembers ? "Sim" : "Não"}</div>
                     </div>
                   </div>
 
@@ -650,20 +650,20 @@ export function InstanceAccess() {
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="sm:max-w-xl">
           <DialogHeader>
-            <DialogTitle>Create admin-managed user</DialogTitle>
-            <DialogDescription>Create login, optional company membership, and initial account status.</DialogDescription>
+            <DialogTitle>Criar usuário administrado</DialogTitle>
+            <DialogDescription>Crie login, membership opcional em empresa e status inicial da conta.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-3 md:grid-cols-2">
             <label className="space-y-1 text-sm">
-              <span>Full name</span>
+              <span>Nome completo</span>
               <input className="w-full rounded-md border border-border bg-background px-3 py-2" value={createForm.fullName} onChange={(event) => setCreateForm((current) => ({ ...current, fullName: event.target.value }))} />
             </label>
             <label className="space-y-1 text-sm">
-              <span>Email</span>
+              <span>E-mail</span>
               <input type="email" className="w-full rounded-md border border-border bg-background px-3 py-2" value={createForm.email} onChange={(event) => setCreateForm((current) => ({ ...current, email: event.target.value }))} />
             </label>
             <label className="space-y-1 text-sm">
-              <span>Password</span>
+              <span>Senha</span>
               <input type="password" className="w-full rounded-md border border-border bg-background px-3 py-2" value={createForm.password} onChange={(event) => setCreateForm((current) => ({ ...current, password: event.target.value }))} />
             </label>
             <label className="space-y-1 text-sm">
@@ -678,20 +678,20 @@ export function InstanceAccess() {
               <input className="w-full rounded-md border border-border bg-background px-3 py-2" value={createForm.cpf} onChange={(event) => setCreateForm((current) => ({ ...current, cpf: event.target.value }))} />
             </label>
             <label className="space-y-1 text-sm">
-              <span>Phone</span>
+              <span>Telefone</span>
               <input className="w-full rounded-md border border-border bg-background px-3 py-2" value={createForm.phone} onChange={(event) => setCreateForm((current) => ({ ...current, phone: event.target.value }))} />
             </label>
             <label className="space-y-1 text-sm md:col-span-2">
-              <span>Initial company access</span>
+              <span>Acesso inicial à empresa</span>
               <select className="w-full rounded-md border border-border bg-background px-3 py-2" value={createForm.companyId} onChange={(event) => setCreateForm((current) => ({ ...current, companyId: event.target.value }))}>
-                <option value="">No company access</option>
+                <option value="">Sem acesso a empresa</option>
                 {companies.map((company) => (
                   <option key={company.id} value={company.id}>{company.name}</option>
                 ))}
               </select>
             </label>
             <label className="space-y-1 text-sm md:col-span-2">
-              <span>Initial membership role</span>
+              <span>Papel inicial de membership</span>
               <select className="w-full rounded-md border border-border bg-background px-3 py-2" value={createForm.membershipRole} disabled={!createForm.companyId} onChange={(event) => setCreateForm((current) => ({ ...current, membershipRole: event.target.value as CreateUserForm["membershipRole"] }))}>
                 <option value="owner">owner</option>
                 <option value="admin">admin</option>
@@ -701,9 +701,9 @@ export function InstanceAccess() {
             </label>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
             <Button type="button" onClick={() => createUserMutation.mutate()} disabled={createUserDisabled || createUserMutation.isPending}>
-              {createUserMutation.isPending ? "Creating…" : "Create user"}
+              {createUserMutation.isPending ? "Criando…" : "Criar usuário"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -712,16 +712,16 @@ export function InstanceAccess() {
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit user</DialogTitle>
-            <DialogDescription>Update user profile fields and account status.</DialogDescription>
+            <DialogTitle>Editar usuário</DialogTitle>
+            <DialogDescription>Atualize dados do perfil e status da conta.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <label className="block space-y-1 text-sm">
-              <span>Email</span>
+              <span>E-mail</span>
               <input className="w-full rounded-md border border-border bg-muted px-3 py-2 text-muted-foreground" value={selectedUserDetails?.email ?? ""} readOnly />
             </label>
             <label className="block space-y-1 text-sm">
-              <span>Full name</span>
+              <span>Nome completo</span>
               <input className="w-full rounded-md border border-border bg-background px-3 py-2" value={editForm.fullName} onChange={(event) => setEditForm((current) => ({ ...current, fullName: event.target.value }))} />
             </label>
             <div className="grid gap-3 md:grid-cols-2">
@@ -730,7 +730,7 @@ export function InstanceAccess() {
                 <input className="w-full rounded-md border border-border bg-background px-3 py-2" value={editForm.cpf} onChange={(event) => setEditForm((current) => ({ ...current, cpf: event.target.value }))} />
               </label>
               <label className="space-y-1 text-sm">
-                <span>Phone</span>
+                <span>Telefone</span>
                 <input className="w-full rounded-md border border-border bg-background px-3 py-2" value={editForm.phone} onChange={(event) => setEditForm((current) => ({ ...current, phone: event.target.value }))} />
               </label>
             </div>
@@ -743,9 +743,9 @@ export function InstanceAccess() {
             </label>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>Cancelar</Button>
             <Button type="button" onClick={() => updateUserMutation.mutate()} disabled={updateUserDisabled || updateUserMutation.isPending}>
-              {updateUserMutation.isPending ? "Saving…" : "Save changes"}
+              {updateUserMutation.isPending ? "Salvando…" : "Salvar alterações"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -754,23 +754,23 @@ export function InstanceAccess() {
       <Dialog open={resetPasswordOpen} onOpenChange={setResetPasswordOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Reset password</DialogTitle>
-            <DialogDescription>Sets new credential password and revokes existing sessions.</DialogDescription>
+            <DialogTitle>Redefinir senha</DialogTitle>
+            <DialogDescription>Define nova senha e revoga sessões existentes.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <label className="block space-y-1 text-sm">
-              <span>New password</span>
+              <span>Nova senha</span>
               <input type="password" className="w-full rounded-md border border-border bg-background px-3 py-2" value={resetPasswordForm.newPassword} onChange={(event) => setResetPasswordForm((current) => ({ ...current, newPassword: event.target.value }))} />
             </label>
             <label className="block space-y-1 text-sm">
-              <span>Confirm password</span>
+              <span>Confirmar senha</span>
               <input type="password" className="w-full rounded-md border border-border bg-background px-3 py-2" value={resetPasswordForm.confirmPassword} onChange={(event) => setResetPasswordForm((current) => ({ ...current, confirmPassword: event.target.value }))} />
             </label>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setResetPasswordOpen(false)}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={() => setResetPasswordOpen(false)}>Cancelar</Button>
             <Button type="button" onClick={() => resetPasswordMutation.mutate()} disabled={resetPasswordDisabled || resetPasswordMutation.isPending}>
-              {resetPasswordMutation.isPending ? "Saving…" : "Reset password"}
+              {resetPasswordMutation.isPending ? "Salvando…" : "Redefinir senha"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -779,17 +779,17 @@ export function InstanceAccess() {
       <Dialog open={blockOpen} onOpenChange={setBlockOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Block user</DialogTitle>
-            <DialogDescription>Blocks sign-in, revokes sessions, and revokes board API keys.</DialogDescription>
+            <DialogTitle>Bloquear usuário</DialogTitle>
+            <DialogDescription>Bloqueia login, revoga sessões e revoga board API keys.</DialogDescription>
           </DialogHeader>
           <label className="block space-y-1 text-sm">
-            <span>Reason</span>
+            <span>Motivo</span>
             <textarea className="min-h-24 w-full rounded-md border border-border bg-background px-3 py-2" value={blockReason} onChange={(event) => setBlockReason(event.target.value)} />
           </label>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setBlockOpen(false)}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={() => setBlockOpen(false)}>Cancelar</Button>
             <Button type="button" variant="destructive" onClick={() => blockMutation.mutate()} disabled={blockMutation.isPending}>
-              {blockMutation.isPending ? "Blocking…" : "Block user"}
+              {blockMutation.isPending ? "Bloqueando…" : "Bloquear usuário"}
             </Button>
           </DialogFooter>
         </DialogContent>

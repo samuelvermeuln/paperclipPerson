@@ -34,11 +34,11 @@ const DEFAULT_COMPANY_ATTACHMENT_MAX_MIB = DEFAULT_COMPANY_ATTACHMENT_MAX_BYTES 
 const MAX_COMPANY_ATTACHMENT_MAX_MIB = MAX_COMPANY_ATTACHMENT_MAX_BYTES / BYTES_PER_MIB;
 
 const INTERACTION_KIND_LABELS: Record<IssueThreadInteractionKind, string> = {
-  suggest_tasks: "Suggested tasks",
-  ask_user_questions: "Ask user questions",
-  request_confirmation: "Confirmations",
-  request_checkbox_confirmation: "Checkbox confirmations",
-  request_item_verdicts: "Item verdicts",
+  suggest_tasks: "Tarefas sugeridas",
+  ask_user_questions: "Perguntas ao usuário",
+  request_confirmation: "Confirmações",
+  request_checkbox_confirmation: "Confirmações por checkbox",
+  request_item_verdicts: "Vereditos por item",
 };
 
 // Sentinel for "no override" — Radix Select disallows empty-string item values.
@@ -46,9 +46,9 @@ const GOVERNANCE_UNSET = "default";
 type GovernanceSelectValue = typeof GOVERNANCE_UNSET | IssueThreadInteractionResolverPolicy;
 
 const GOVERNANCE_POLICY_OPTIONS: { value: GovernanceSelectValue; label: string }[] = [
-  { value: GOVERNANCE_UNSET, label: "Company default" },
-  { value: "board_only", label: "Board only" },
-  { value: "board_or_agents", label: "Board or agents" },
+  { value: GOVERNANCE_UNSET, label: "Padrão da empresa" },
+  { value: "board_only", label: "Somente board" },
+  { value: "board_or_agents", label: "Board ou agentes" },
 ];
 
 function toSelectValue(policy: IssueThreadInteractionResolverPolicy | undefined): GovernanceSelectValue {
@@ -269,15 +269,15 @@ export function CompanySettings() {
 
   useEffect(() => {
     setBreadcrumbs([
-      { label: selectedCompany?.name ?? "Company", href: "/dashboard" },
-      { label: "Settings" }
+      { label: selectedCompany?.name ?? "Empresa", href: "/dashboard" },
+      { label: "Configurações" }
     ]);
   }, [setBreadcrumbs, selectedCompany?.name]);
 
   if (!selectedCompany) {
     return (
       <div className="text-sm text-muted-foreground">
-        No company selected. Select a company from the switcher above.
+        Nenhuma empresa selecionada. Escolha uma empresa no seletor acima.
       </div>
     );
   }
@@ -295,16 +295,16 @@ export function CompanySettings() {
     <div className="max-w-2xl space-y-6">
       <div className="flex items-center gap-2">
         <Settings className="h-5 w-5 text-muted-foreground" />
-        <h1 className="text-lg font-semibold">Company Settings</h1>
+        <h1 className="text-lg font-semibold">Configurações da empresa</h1>
       </div>
 
       {/* General */}
       <div className="space-y-4">
         <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-          General
+          Geral
         </div>
         <div className="space-y-3 rounded-md border border-border px-4 py-4">
-          <Field label="Company name" hint="The display name for your company.">
+          <Field label="Nome da empresa" hint="Nome exibido da sua empresa.">
             <input
               className="w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm outline-none"
               type="text"
@@ -313,14 +313,14 @@ export function CompanySettings() {
             />
           </Field>
           <Field
-            label="Description"
-            hint="Optional description shown in the company profile."
+            label="Descrição"
+            hint="Descrição opcional exibida no perfil da empresa."
           >
             <input
               className="w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm outline-none"
               type="text"
               value={description}
-              placeholder="Optional company description"
+              placeholder="Descrição opcional da empresa"
               onChange={(e) => setDescription(e.target.value)}
             />
           </Field>
@@ -330,7 +330,7 @@ export function CompanySettings() {
       {/* Appearance */}
       <div className="space-y-4">
         <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-          Appearance
+          Aparência
         </div>
         <div className="space-y-3 rounded-md border border-border px-4 py-4">
           <div className="flex items-start gap-4">
@@ -345,7 +345,7 @@ export function CompanySettings() {
             <div className="flex-1 space-y-3">
               <Field
                 label="Logo"
-                hint="Upload a PNG, JPEG, WEBP, GIF, or SVG logo image."
+                hint="Envie uma imagem PNG, JPEG, WEBP, GIF ou SVG como logo."
               >
                 <div className="space-y-2">
                   <input
@@ -362,7 +362,7 @@ export function CompanySettings() {
                         onClick={handleClearLogo}
                         disabled={clearLogoMutation.isPending}
                       >
-                        {clearLogoMutation.isPending ? "Removing..." : "Remove logo"}
+                        {clearLogoMutation.isPending ? "Removendo..." : "Remover logo"}
                       </Button>
                     </div>
                   )}
@@ -371,7 +371,7 @@ export function CompanySettings() {
                       {logoUploadError ??
                         (logoUploadMutation.error instanceof Error
                           ? logoUploadMutation.error.message
-                          : "Logo upload failed")}
+                          : "Falha ao enviar logo")}
                     </span>
                   )}
                   {clearLogoMutation.isError && (
@@ -380,13 +380,13 @@ export function CompanySettings() {
                     </span>
                   )}
                   {logoUploadMutation.isPending && (
-                    <span className="text-xs text-muted-foreground">Uploading logo...</span>
+                    <span className="text-xs text-muted-foreground">Enviando logo...</span>
                   )}
                 </div>
               </Field>
               <Field
-                label="Brand color"
-                hint="Sets the hue for the company icon. Leave empty for auto-generated color."
+                label="Cor da marca"
+                hint="Define a cor do ícone da empresa. Deixe vazio para cor automática."
               >
                 <div className="flex items-center gap-2">
                   {/* token-extraction: allowlisted — <input type="color"> value must be a real hex string, not a var() reference. */}
@@ -405,7 +405,7 @@ export function CompanySettings() {
                         setBrandColor(v);
                       }
                     }}
-                    placeholder="Auto"
+                    placeholder="Automático"
                     className="w-28 rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm font-mono outline-none"
                   />
                   {brandColor && (
@@ -415,14 +415,14 @@ export function CompanySettings() {
                       onClick={() => setBrandColor("")}
                       className="text-xs text-muted-foreground"
                     >
-                      Clear
+                      Limpar
                     </Button>
                   )}
                 </div>
               </Field>
               <Field
-                label="Attachment size limit"
-                hint={`Accepted range: 1-${MAX_COMPANY_ATTACHMENT_MAX_MIB} MiB.`}
+                label="Limite de tamanho de anexo"
+                hint={`Faixa aceita: 1-${MAX_COMPANY_ATTACHMENT_MAX_MIB} MiB.`}
               >
                 <div className="flex flex-col gap-1.5">
                   <div className="flex items-center gap-2">
@@ -439,7 +439,7 @@ export function CompanySettings() {
                   </div>
                   {!attachmentMaxValid && (
                     <span className="text-xs text-destructive">
-                      Enter a whole number from 1 to {MAX_COMPANY_ATTACHMENT_MAX_MIB}.
+                      Informe um número inteiro entre 1 e {MAX_COMPANY_ATTACHMENT_MAX_MIB}.
                     </span>
                   )}
                 </div>
@@ -457,16 +457,16 @@ export function CompanySettings() {
             onClick={handleSaveGeneral}
             disabled={generalMutation.isPending || !companyName.trim() || !attachmentMaxValid}
           >
-            {generalMutation.isPending ? "Saving..." : "Save changes"}
+            {generalMutation.isPending ? "Salvando..." : "Salvar alterações"}
           </Button>
           {generalMutation.isSuccess && (
-            <span className="text-xs text-muted-foreground">Saved</span>
+            <span className="text-xs text-muted-foreground">Salvo</span>
           )}
           {generalMutation.isError && (
             <span className="text-xs text-destructive">
               {generalMutation.error instanceof Error
                   ? generalMutation.error.message
-                  : "Failed to save"}
+                  : "Falha ao salvar"}
             </span>
           )}
         </div>
@@ -475,12 +475,12 @@ export function CompanySettings() {
       {/* Hiring */}
       <div className="space-y-4" data-testid="company-settings-team-section">
         <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-          Hiring
+          Contratações
         </div>
         <div className="rounded-md border border-border px-4 py-3">
           <ToggleField
-            label="Require board approval for new hires"
-            hint="New agent hires stay pending until approved by board."
+            label="Exigir aprovação do board para novas contratações"
+            hint="Novas contratações de agentes ficam pendentes até aprovação do board."
             checked={!!selectedCompany.requireBoardApprovalForNewAgents}
             onChange={(v) => settingsMutation.mutate(v)}
             toggleTestId="company-settings-team-approval-toggle"
@@ -491,18 +491,18 @@ export function CompanySettings() {
       {/* Interaction governance */}
       <div className="space-y-4" data-testid="company-settings-interaction-governance-section">
         <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-          Interaction governance
+          Governança de interações
         </div>
         <div className="space-y-4 rounded-md border border-border px-4 py-4">
           <p className="text-sm text-muted-foreground">
-            Control who may resolve each kind of thread interaction.{" "}
-            <span className="font-medium text-foreground">Default policy</span> is the
-            resolver policy new interactions request;{" "}
-            <span className="font-medium text-foreground">Cap</span> is the maximum a
-            request may reach — set it to{" "}
-            <span className="font-medium text-foreground">Board only</span> to always
-            require the board. Tool-approval confirmations always stay board-only
-            regardless of these settings.
+            Controle quem pode resolver cada tipo de interação da thread.{" "}
+            <span className="font-medium text-foreground">Política padrão</span> é a
+            política solicitada por novas interações;{" "}
+            <span className="font-medium text-foreground">Limite</span> é o máximo que a
+            solicitação pode alcançar — defina como{" "}
+            <span className="font-medium text-foreground">Somente board</span> para sempre
+            exigir o board. Confirmações de aprovação de ferramentas continuam sempre restritas ao board,
+            independentemente destas configurações.
           </p>
           {/*
            * Responsive: below `sm` the row collapses to a single column so the
@@ -513,13 +513,13 @@ export function CompanySettings() {
            */}
           <div className="grid grid-cols-1 gap-y-4 sm:grid-cols-[1fr_auto_auto] sm:items-center sm:gap-x-4 sm:gap-y-2.5">
             <div className="hidden text-xs font-medium text-muted-foreground uppercase tracking-wide sm:block">
-              Kind
+              Tipo
             </div>
             <div className="hidden text-xs font-medium text-muted-foreground uppercase tracking-wide sm:block">
-              Default policy
+              Política padrão
             </div>
             <div className="hidden text-xs font-medium text-muted-foreground uppercase tracking-wide sm:block">
-              Cap
+              Limite
             </div>
             {ISSUE_THREAD_INTERACTION_KINDS.map((kind) => {
               const entry = governance[kind] ?? {};
@@ -530,7 +530,7 @@ export function CompanySettings() {
                   <GovernanceSelect
                     testId={`governance-${kind}-default`}
                     ariaLabel={`Default resolver policy for ${kindLabel}`}
-                    mobileLabel="Default policy"
+                    mobileLabel="Política padrão"
                     value={toSelectValue(entry.defaultPolicy)}
                     disabled={governanceMutation.isPending}
                     onChange={(v) => handleGovernanceChange(kind, "defaultPolicy", v)}
@@ -538,7 +538,7 @@ export function CompanySettings() {
                   <GovernanceSelect
                     testId={`governance-${kind}-cap`}
                     ariaLabel={`Resolver cap for ${kindLabel}`}
-                    mobileLabel="Cap"
+                    mobileLabel="Limite"
                     value={toSelectValue(entry.cap)}
                     disabled={governanceMutation.isPending}
                     onChange={(v) => handleGovernanceChange(kind, "cap", v)}
@@ -551,7 +551,7 @@ export function CompanySettings() {
             <span className="text-xs text-destructive">
               {governanceMutation.error instanceof Error
                 ? governanceMutation.error.message
-                : "Failed to save interaction governance"}
+                : "Falha ao salvar governança de interações"}
             </span>
           )}
         </div>
@@ -560,20 +560,20 @@ export function CompanySettings() {
       {/* Import / Export */}
       <div className="space-y-4">
         <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-          Company Packages
+          Pacotes da empresa
         </div>
         <div className="rounded-md border border-border px-4 py-4">
           <div className="flex flex-wrap items-center gap-2">
             <Button size="sm" variant="outline" asChild>
               <Link to="/company/export">
                 <Download className="mr-1.5 h-3.5 w-3.5" />
-                Export
+                Exportar
               </Link>
             </Button>
             <Button size="sm" variant="outline" asChild>
               <Link to="/company/import">
                 <Upload className="mr-1.5 h-3.5 w-3.5" />
-                Import
+                Importar
               </Link>
             </Button>
           </div>
@@ -583,12 +583,12 @@ export function CompanySettings() {
       {/* Danger Zone */}
       <div className="space-y-4">
         <div className="text-xs font-medium text-destructive uppercase tracking-wide">
-          Danger Zone
+          Zona de perigo
         </div>
         <div className="space-y-3 rounded-md border border-destructive/40 bg-destructive/5 px-4 py-4">
           <p className="text-sm text-muted-foreground">
-            Archive this company to hide it from the sidebar. This persists in
-            the database.
+            Arquive esta empresa para escondê-la da barra lateral. Isso será persistido
+            no banco de dados.
           </p>
           <div className="flex items-center gap-2">
             <Button
@@ -601,7 +601,7 @@ export function CompanySettings() {
               onClick={() => {
                 if (!selectedCompanyId) return;
                 const confirmed = window.confirm(
-                  `Archive company "${selectedCompany.name}"? It will be hidden from the sidebar.`
+                  `Arquivar empresa "${selectedCompany.name}"? Ela será escondida da barra lateral.`
                 );
                 if (!confirmed) return;
                 const nextCompanyId =
@@ -617,16 +617,16 @@ export function CompanySettings() {
               }}
             >
               {archiveMutation.isPending
-                ? "Archiving..."
+                ? "Arquivando..."
                 : selectedCompany.status === "archived"
-                ? "Already archived"
-                : "Archive company"}
+                ? "Já arquivada"
+                : "Arquivar empresa"}
             </Button>
             {archiveMutation.isError && (
               <span className="text-xs text-destructive">
                 {archiveMutation.error instanceof Error
                   ? archiveMutation.error.message
-                  : "Failed to archive company"}
+                  : "Falha ao arquivar empresa"}
               </span>
             )}
           </div>

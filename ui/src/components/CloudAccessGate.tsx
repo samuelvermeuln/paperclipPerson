@@ -13,13 +13,13 @@ function NoBoardAccessPage() {
   return (
     <div className="mx-auto max-w-xl py-10">
       <Card className="block p-6">
-        <h1 className="text-xl font-semibold">No company access</h1>
+        <h1 className="text-xl font-semibold">Sem acesso a empresa</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          This account is signed in, but it does not have an active company membership or instance-admin access on
-          this Paperclip instance.
+          Esta conta está autenticada, mas não possui membership ativa em empresa nem acesso de administrador global
+          nesta instância do Paperclip.
         </p>
         <p className="mt-2 text-sm text-muted-foreground">
-          Use a company invite or sign in with an account that already belongs to this org.
+          Use um convite de empresa ou entre com uma conta que já pertença a esta organização.
         </p>
       </Card>
     </div>
@@ -85,7 +85,7 @@ export function CloudAccessGate() {
           ? healthQuery.error.message
           : boardAccessQuery.error instanceof Error
             ? boardAccessQuery.error.message
-            : "Failed to load app state"}
+            : "Falha ao carregar estado da aplicação"}
       </div>
     );
   }

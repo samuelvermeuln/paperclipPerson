@@ -2,10 +2,12 @@ import {
   authSessionSchema,
   completeRegistrationSchema,
   currentUserProfileSchema,
+  authProvidersResponseSchema,
   forgotPasswordRequestSchema,
   meResponseSchema,
   resetPasswordWithCodeSchema,
   verifyPasswordResetCodeSchema,
+  type AuthProvidersResponse,
   type AuthSession,
   type CompleteRegistrationInput,
   type CurrentUserProfile,
@@ -170,6 +172,18 @@ export const authApi = {
     if (direct) return direct;
     const nested = payload && typeof payload === "object" ? toSession((payload as Record<string, unknown>).data) : null;
     return nested;
+  },
+
+  getProviders: async (): Promise<AuthProvidersResponse> => {
+    const res = await fetch("/api/auth/providers", {
+      credentials: "include",
+      headers: { Accept: "application/json" },
+    });
+    const payload = await res.json().catch(() => null);
+    if (!res.ok) {
+      throw extractAuthError(payload as AuthErrorBody, res.status);
+    }
+    return authProvidersResponseSchema.parse(payload);
   },
 
   signInEmail: async (input: { email: string; password: string }) => {

@@ -4,20 +4,20 @@ import { INSTANCE_SETTINGS_PATH_PREFIX } from "@/lib/instance-settings";
 import { useLocation, useNavigate } from "@/lib/router";
 
 const items = [
-  { value: "general", label: "General", href: "/company/settings" },
-  { value: "export", label: "Export", href: "/company/export" },
-  { value: "import", label: "Import", href: "/company/import" },
-  { value: "members", label: "Members", href: "/company/settings/members" },
-  { value: "invites", label: "Invites", href: "/company/settings/invites" },
+  { value: "general", label: "Geral", href: "/company/settings" },
+  { value: "export", label: "Exportar", href: "/company/export" },
+  { value: "import", label: "Importar", href: "/company/import" },
+  { value: "members", label: "Membros", href: "/company/settings/members" },
+  { value: "invites", label: "Convites", href: "/company/settings/invites" },
   { value: "secrets", label: "Secrets", href: "/company/settings/secrets" },
-  { value: "instance-profile", label: "Instance profile", href: `${INSTANCE_SETTINGS_PATH_PREFIX}/profile` },
-  { value: "instance-general", label: "Instance general", href: `${INSTANCE_SETTINGS_PATH_PREFIX}/general` },
-  { value: "instance-environments", label: "Instance environments", href: `${INSTANCE_SETTINGS_PATH_PREFIX}/environments` },
-  { value: "instance-access", label: "Instance access", href: `${INSTANCE_SETTINGS_PATH_PREFIX}/access` },
-  { value: "instance-heartbeats", label: "Instance heartbeats", href: `${INSTANCE_SETTINGS_PATH_PREFIX}/heartbeats` },
-  { value: "instance-experimental", label: "Instance experimental", href: `${INSTANCE_SETTINGS_PATH_PREFIX}/experimental` },
-  { value: "instance-plugins", label: "Instance plugins", href: `${INSTANCE_SETTINGS_PATH_PREFIX}/plugins` },
-  { value: "instance-adapters", label: "Instance adapters", href: `${INSTANCE_SETTINGS_PATH_PREFIX}/adapters` },
+  { value: "instance-profile", label: "Perfil da instância", href: `${INSTANCE_SETTINGS_PATH_PREFIX}/profile` },
+  { value: "instance-general", label: "Geral da instância", href: `${INSTANCE_SETTINGS_PATH_PREFIX}/general` },
+  { value: "instance-environments", label: "Ambientes da instância", href: `${INSTANCE_SETTINGS_PATH_PREFIX}/environments` },
+  { value: "instance-access", label: "Acesso da instância", href: `${INSTANCE_SETTINGS_PATH_PREFIX}/access` },
+  { value: "instance-heartbeats", label: "Heartbeats da instância", href: `${INSTANCE_SETTINGS_PATH_PREFIX}/heartbeats` },
+  { value: "instance-experimental", label: "Experimental da instância", href: `${INSTANCE_SETTINGS_PATH_PREFIX}/experimental` },
+  { value: "instance-plugins", label: "Plugins da instância", href: `${INSTANCE_SETTINGS_PATH_PREFIX}/plugins` },
+  { value: "instance-adapters", label: "Adapters da instância", href: `${INSTANCE_SETTINGS_PATH_PREFIX}/adapters` },
 ] as const;
 
 type CompanySettingsTab = (typeof items)[number]["value"];

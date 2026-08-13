@@ -12,6 +12,7 @@ const getSessionMock = vi.hoisted(() => vi.fn());
 const signInEmailMock = vi.hoisted(() => vi.fn());
 const signUpEmailMock = vi.hoisted(() => vi.fn());
 const getMeMock = vi.hoisted(() => vi.fn());
+const getProvidersMock = vi.hoisted(() => vi.fn());
 
 vi.mock("../api/auth", () => ({
   authApi: {
@@ -19,6 +20,7 @@ vi.mock("../api/auth", () => ({
     signInEmail: (input: unknown) => signInEmailMock(input),
     signUpEmail: (input: unknown) => signUpEmailMock(input),
     getMe: () => getMeMock(),
+    getProviders: () => getProvidersMock(),
   },
 }));
 
@@ -90,6 +92,7 @@ describe("AuthPage", () => {
     getSessionMock.mockResolvedValue(null);
     signInEmailMock.mockResolvedValue(undefined);
     signUpEmailMock.mockResolvedValue(undefined);
+    getProvidersMock.mockResolvedValue({ google: { enabled: true } });
     getMeMock.mockResolvedValue({
       id: "user-1",
       fullName: null,
@@ -122,6 +125,7 @@ describe("AuthPage", () => {
               <Route path="/login" element={<AuthPage />} />
               <Route path="/register" element={<AuthPage />} />
               <Route path="/register/complete" element={<AuthPage />} />
+              <Route path="/" element={<div>home</div>} />
             </Routes>
           </QueryClientProvider>
         </MemoryRouter>,
@@ -169,7 +173,7 @@ describe("AuthPage", () => {
     const { root } = await mount();
 
     const createOne = Array.from(container.querySelectorAll("button")).find(
-      (button) => button.textContent === "Create one",
+      (button) => button.textContent === "Criar conta",
     );
     expect(createOne).not.toBeNull();
 
@@ -241,10 +245,10 @@ describe("AuthPage", () => {
 
     const { root } = await mount("/register/complete");
 
-    expect(container.textContent).toContain("Complete your registration");
+    expect(container.textContent).toContain("Conclua seu cadastro");
     expect(container.querySelector('input[name="email"]')).toBeNull();
     expect(container.querySelector('input[name="password"]')).toBeNull();
-    expect(container.textContent).toContain("Complete registration");
+    expect(container.textContent).toContain("Concluir cadastro");
 
     await act(async () => {
       root.unmount();

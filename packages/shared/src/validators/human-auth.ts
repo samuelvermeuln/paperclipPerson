@@ -204,6 +204,12 @@ export const completeRegistrationSchema = z.discriminatedUnion("registrationKind
   completePjRegistrationSchema,
 ]);
 
+export const authProvidersResponseSchema = z.object({
+  google: z.object({
+    enabled: z.boolean(),
+  }),
+});
+
 export const forgotPasswordRequestSchema = z.object({
   email: normalizedEmailSchema,
 });
@@ -298,6 +304,7 @@ export type RegisterRequest = z.infer<typeof registerRequestSchema>;
 export type CompletePfRegistrationInput = z.infer<typeof completePfRegistrationSchema>;
 export type CompletePjRegistrationInput = z.infer<typeof completePjRegistrationSchema>;
 export type CompleteRegistrationInput = z.infer<typeof completeRegistrationSchema>;
+export type AuthProvidersResponse = z.infer<typeof authProvidersResponseSchema>;
 export type ForgotPasswordRequest = z.infer<typeof forgotPasswordRequestSchema>;
 export type VerifyPasswordResetCodeInput = z.infer<typeof verifyPasswordResetCodeSchema>;
 export type ResetPasswordWithCodeInput = z.infer<typeof resetPasswordWithCodeSchema>;

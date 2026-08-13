@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import type { Db } from "@paperclipai/db";
 import { authUsers } from "@paperclipai/db";
 import {
+  authProvidersResponseSchema,
   authSessionSchema,
   completeRegistrationSchema,
   currentUserProfileSchema,
@@ -39,6 +40,20 @@ async function loadCurrentUserProfile(db: Db, userId: string) {
 
 export function authRoutes(db: Db) {
   const router = Router();
+
+  router.get("/providers", async (_req, res) => {
+    const hasGoogleClientId = Boolean(process.env.GOOGLE_CLIENT_ID?.trim());
+    const hasGoogleClientSecret = Boolean(process.env.GOOGLE_CLIENT_SECRET?.trim());
+    const hasExplicitBaseUrl =
+      process.env.PAPERCLIP_AUTH_BASE_URL_MODE?.trim() === "explicit" &&
+      Boolean(process.env.PAPERCLIP_AUTH_PUBLIC_BASE_URL?.trim());
+
+    res.json(authProvidersResponseSchema.parse({
+      google: {
+        enabled: hasGoogleClientId && hasGoogleClientSecret && hasExplicitBaseUrl,
+      },
+    }));
+  });
 
   router.get("/get-session", async (req, res) => {
     if (req.actor.type !== "board" || !req.actor.userId) {
