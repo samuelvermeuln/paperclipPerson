@@ -11,12 +11,14 @@ import { AuthPage } from "./Auth";
 const getSessionMock = vi.hoisted(() => vi.fn());
 const signInEmailMock = vi.hoisted(() => vi.fn());
 const signUpEmailMock = vi.hoisted(() => vi.fn());
+const getMeMock = vi.hoisted(() => vi.fn());
 
 vi.mock("../api/auth", () => ({
   authApi: {
     getSession: () => getSessionMock(),
     signInEmail: (input: unknown) => signInEmailMock(input),
     signUpEmail: (input: unknown) => signUpEmailMock(input),
+    getMe: () => getMeMock(),
   },
 }));
 
@@ -88,6 +90,19 @@ describe("AuthPage", () => {
     getSessionMock.mockResolvedValue(null);
     signInEmailMock.mockResolvedValue(undefined);
     signUpEmailMock.mockResolvedValue(undefined);
+    getMeMock.mockResolvedValue({
+      id: "user-1",
+      fullName: null,
+      email: "jane@example.com",
+      phone: null,
+      cpf: null,
+      registrationKind: null,
+      status: "ACTIVE",
+      isSuperAdmin: false,
+      emailVerified: true,
+      emailVerifiedAt: null,
+      companies: [],
+    });
   });
 
   afterEach(() => {
@@ -96,14 +111,17 @@ describe("AuthPage", () => {
     vi.clearAllMocks();
   });
 
-  async function mount() {
+  async function mount(path: string = "/auth") {
     const { root, queryClient } = renderAuthPage(container);
     await act(async () => {
       root.render(
-        <MemoryRouter initialEntries={["/auth"]}>
+        <MemoryRouter initialEntries={[path]}>
           <QueryClientProvider client={queryClient}>
             <Routes>
               <Route path="/auth" element={<AuthPage />} />
+              <Route path="/login" element={<AuthPage />} />
+              <Route path="/register" element={<AuthPage />} />
+              <Route path="/register/complete" element={<AuthPage />} />
             </Routes>
           </QueryClientProvider>
         </MemoryRouter>,
@@ -209,6 +227,24 @@ describe("AuthPage", () => {
     expect(emailInput.getAttribute("aria-invalid")).toBe("true");
     expect(passwordInput.getAttribute("aria-describedby")).toBe(errorId);
     expect(passwordInput.getAttribute("aria-invalid")).toBe("true");
+
+    await act(async () => {
+      root.unmount();
+    });
+  });
+
+  it("renders registration-completion mode without email and password fields", async () => {
+    getSessionMock.mockResolvedValue({
+      session: { id: "session-1", userId: "user-1" },
+      user: { id: "user-1", email: "jane@example.com", name: "Jane Example" },
+    });
+
+    const { root } = await mount("/register/complete");
+
+    expect(container.textContent).toContain("Complete your registration");
+    expect(container.querySelector('input[name="email"]')).toBeNull();
+    expect(container.querySelector('input[name="password"]')).toBeNull();
+    expect(container.textContent).toContain("Complete registration");
 
     await act(async () => {
       root.unmount();

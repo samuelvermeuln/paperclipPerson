@@ -7,6 +7,10 @@ export const companies = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     name: text("name").notNull(),
     description: text("description"),
+    legalName: text("legal_name"),
+    cnpj: text("cnpj"),
+    companyPhone: text("company_phone"),
+    registrationKind: text("registration_kind"),
     status: text("status").notNull().default("active"),
     pauseReason: text("pause_reason"),
     pausedAt: timestamp("paused_at", { withTimezone: true }),
@@ -37,5 +41,6 @@ export const companies = pgTable(
   },
   (table) => ({
     issuePrefixUniqueIdx: uniqueIndex("companies_issue_prefix_idx").on(table.issuePrefix),
+    companyCnpjUniqueIdx: uniqueIndex("companies_cnpj_unique_idx").on(table.cnpj),
   }),
 );

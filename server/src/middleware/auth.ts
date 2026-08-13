@@ -57,7 +57,7 @@ async function loadResponsibleUserMemberships(
   if (!input.userId) return [];
   const [user, memberships] = await Promise.all([
     db
-      .select({ id: authUsers.id })
+      .select({ id: authUsers.id, status: authUsers.status, banned: authUsers.banned })
       .from(authUsers)
       .where(eq(authUsers.id, input.userId))
       .then((rows) => rows[0] ?? null),
@@ -77,7 +77,8 @@ async function loadResponsibleUserMemberships(
         ),
       ),
   ]);
-  return user ? memberships : [];
+  if (!user || user.status === "BLOCKED" || user.banned) return [];
+  return memberships;
 }
 
 /**
@@ -86,6 +87,14 @@ async function loadResponsibleUserMemberships(
  * and the Cloud trusted-header path so both resolve the same access set.
  */
 async function loadActiveUserCompanyMemberships(db: Db, userId: string) {
+  const user = await db
+    .select({ id: authUsers.id, status: authUsers.status, banned: authUsers.banned })
+    .from(authUsers)
+    .where(eq(authUsers.id, userId))
+    .then((rows) => rows[0] ?? null);
+  if (!user || user.status === "BLOCKED" || user.banned) {
+    return [];
+  }
   return db
     .select({
       companyId: companyMemberships.companyId,
@@ -203,7 +212,12 @@ export function actorMiddleware(db: Db, opts: ActorMiddlewareOptions): RequestHa
         }
         if (session?.user?.id && session.session?.id) {
           const userId = session.user.id;
-          const [roleRow, memberships] = await Promise.all([
+          const [userRow, roleRow, memberships] = await Promise.all([
+            db
+              .select({ status: authUsers.status, banned: authUsers.banned })
+              .from(authUsers)
+              .where(eq(authUsers.id, userId))
+              .then((rows) => rows[0] ?? null),
             db
               .select({ id: instanceUserRoles.id })
               .from(instanceUserRoles)
@@ -211,6 +225,11 @@ export function actorMiddleware(db: Db, opts: ActorMiddlewareOptions): RequestHa
               .then((rows) => rows[0] ?? null),
             loadActiveUserCompanyMemberships(db, userId),
           ]);
+          if (!userRow || userRow.status === "BLOCKED" || userRow.banned) {
+            if (runIdHeader) req.actor.runId = runIdHeader;
+            next();
+            return;
+          }
           req.actor = {
             type: "board",
             userId,
@@ -439,6 +458,7 @@ export async function resolveCloudTenantActor(db: Db, req: Request): Promise<Exp
       name: userName,
       email: userEmail,
       emailVerified: true,
+      emailVerifiedAt: now,
       image: null,
       createdAt: now,
       updatedAt: now,
@@ -449,9 +469,19 @@ export async function resolveCloudTenantActor(db: Db, req: Request): Promise<Exp
         name: userName,
         email: userEmail,
         emailVerified: true,
+        emailVerifiedAt: now,
         updatedAt: now,
       },
     });
+
+  const cloudUser = await db
+    .select({ status: authUsers.status, banned: authUsers.banned })
+    .from(authUsers)
+    .where(eq(authUsers.id, userId))
+    .then((rows) => rows[0] ?? null);
+  if (!cloudUser || cloudUser.status === "BLOCKED" || cloudUser.banned) {
+    return null;
+  }
 
   // Earlier cloud_tenant builds granted every tenant user `instance_admin`.
   // Stale rows from those deployments would still elevate this user through

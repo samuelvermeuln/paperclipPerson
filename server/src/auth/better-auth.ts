@@ -1,8 +1,10 @@
 import type { Request, RequestHandler } from "express";
 import type { IncomingHttpHeaders } from "node:http";
-import { betterAuth, type Auth } from "better-auth";
+import { betterAuth, type Auth, type BetterAuthOptions } from "better-auth";
+import { APIError } from "better-auth/api";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { toNodeHandler } from "better-auth/node";
+import { emailOTP } from "better-auth/plugins";
 import type { Db } from "@paperclipai/db";
 import {
   authAccounts,
@@ -10,6 +12,8 @@ import {
   authUsers,
   authVerifications,
 } from "@paperclipai/db";
+import { eq } from "drizzle-orm";
+import { sendAuthOtpEmail } from "../services/auth-email.js";
 import type { Config } from "../config.js";
 import { resolvePaperclipInstanceId } from "../home-paths.js";
 
@@ -144,6 +148,24 @@ export function deriveAuthTrustedOrigins(config: Config, opts?: { listenPort?: n
   return Array.from(trustedOrigins);
 }
 
+function googleSocialProviders(config: Config) {
+  const clientId = process.env.GOOGLE_CLIENT_ID?.trim();
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim();
+  if (!clientId && !clientSecret) return undefined;
+  if (!clientId || !clientSecret) {
+    throw new Error("GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must both be set to enable Google auth");
+  }
+  if (config.authBaseUrlMode !== "explicit" || !config.authPublicBaseUrl) {
+    throw new Error("Google auth requires PAPERCLIP_AUTH_BASE_URL_MODE=explicit and PAPERCLIP_AUTH_PUBLIC_BASE_URL");
+  }
+  return {
+    google: {
+      clientId,
+      clientSecret,
+    },
+  };
+}
+
 export function createBetterAuthInstance(db: Db, config: Config, trustedOrigins: string[]): BetterAuthInstance {
   const baseUrl = config.authBaseUrlMode === "explicit" ? config.authPublicBaseUrl : undefined;
   const publicUrl = process.env.PAPERCLIP_PUBLIC_URL?.trim() || baseUrl;
@@ -162,7 +184,7 @@ export function createBetterAuthInstance(db: Db, config: Config, trustedOrigins:
     publicUrl,
   });
 
-  const authConfig = {
+  const authConfig: BetterAuthOptions = {
     baseURL: baseUrl,
     secret,
     trustedOrigins,
@@ -175,11 +197,127 @@ export function createBetterAuthInstance(db: Db, config: Config, trustedOrigins:
         verification: authVerifications,
       },
     }),
+    user: {
+      additionalFields: {
+        cpf: {
+          type: "string" as const,
+          required: false,
+          input: false,
+        },
+        phone: {
+          type: "string" as const,
+          required: false,
+          input: false,
+        },
+        registrationKind: {
+          type: "string" as const,
+          required: false,
+          input: false,
+        },
+        status: {
+          type: "string" as const,
+          required: false,
+          input: false,
+        },
+        emailVerifiedAt: {
+          type: "date" as const,
+          required: false,
+          input: false,
+        },
+        role: {
+          type: "string" as const,
+          required: false,
+          input: false,
+        },
+        banned: {
+          type: "boolean" as const,
+          required: false,
+          input: false,
+        },
+        banReason: {
+          type: "string" as const,
+          required: false,
+          input: false,
+        },
+        banExpires: {
+          type: "date" as const,
+          required: false,
+          input: false,
+        },
+      },
+    },
+    session: {
+      additionalFields: {
+        impersonatedBy: {
+          type: "string" as const,
+          required: false,
+          input: false,
+        },
+      },
+    },
     emailAndPassword: {
       enabled: true,
       requireEmailVerification: false,
       disableSignUp: config.authDisableSignUp,
+      revokeSessionsOnPasswordReset: true,
     },
+    account: {
+      accountLinking: {
+        trustedProviders: ["google"],
+        allowDifferentEmails: false,
+      },
+    },
+    socialProviders: googleSocialProviders(config),
+    databaseHooks: {
+      user: {
+        create: {
+          async before(user: Record<string, unknown>) {
+            if (user.emailVerified === true && user.emailVerifiedAt === undefined) {
+              return { data: { ...user, emailVerifiedAt: new Date() } };
+            }
+            return undefined;
+          },
+        },
+        update: {
+          async before(user: Record<string, unknown>) {
+            if (user.emailVerified === true && user.emailVerifiedAt === undefined) {
+              return { data: { ...user, emailVerifiedAt: new Date() } };
+            }
+            return undefined;
+          },
+        },
+      },
+      session: {
+        create: {
+          async before(session: { userId: string }) {
+            const user = await db
+              .select({ status: authUsers.status, banned: authUsers.banned })
+              .from(authUsers)
+              .where(eq(authUsers.id, session.userId))
+              .then((rows) => rows[0] ?? null);
+            if (!user) {
+              throw new APIError("NOT_FOUND", { message: "User not found" });
+            }
+            if (user.status === "BLOCKED" || user.banned) {
+              throw new APIError("FORBIDDEN", { message: "User account is blocked", code: "USER_BLOCKED" });
+            }
+            return undefined;
+          },
+        },
+      },
+    },
+    plugins: [
+      emailOTP({
+        expiresIn: 600,
+        allowedAttempts: 5,
+        otpLength: 6,
+        storeOTP: "hashed",
+        sendVerificationOnSignUp: false,
+        sendVerificationOTP: async ({ email, otp, type }) => {
+          await sendAuthOtpEmail({ email, otp, type });
+        },
+      }),
+    ],
     rateLimit: buildBetterAuthRateLimitOptions({
       deploymentMode: config.deploymentMode,
       deploymentExposure: config.deploymentExposure,

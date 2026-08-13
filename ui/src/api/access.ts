@@ -1,4 +1,12 @@
-import type { AgentAdapterType, JoinRequest, PermissionKey } from "@paperclipai/shared";
+import type {
+  AdminCreateUserInput,
+  AdminResetUserPasswordInput,
+  AdminSetUserBlockedInput,
+  AdminUpdateUserInput,
+  AgentAdapterType,
+  JoinRequest,
+  PermissionKey,
+} from "@paperclipai/shared";
 import { api } from "./client";
 
 export type HumanCompanyRole = "owner" | "admin" | "operator" | "viewer";
@@ -205,6 +213,7 @@ export type AdminUserDirectoryEntry = {
   email: string | null;
   name: string | null;
   image: string | null;
+  status: "ACTIVE" | "BLOCKED";
   isInstanceAdmin: boolean;
   activeCompanyMembershipCount: number;
 };
@@ -228,6 +237,9 @@ export type UserCompanyAccessResponse = {
     email: string | null;
     name: string | null;
     image: string | null;
+    phone: string | null;
+    cpf: string | null;
+    status: "ACTIVE" | "BLOCKED";
     isInstanceAdmin: boolean;
   } | null;
   companyAccess: UserCompanyAccessEntry[];
@@ -401,6 +413,21 @@ export const accessApi = {
 
   searchAdminUsers: (query: string) =>
     api.get<AdminUserDirectoryEntry[]>(`/admin/users?query=${encodeURIComponent(query)}`),
+
+  createAdminUser: (input: AdminCreateUserInput) =>
+    api.post<{ userId: string }>(`/admin/users`, input),
+
+  updateAdminUser: (userId: string, input: AdminUpdateUserInput) =>
+    api.patch<{ success: true }>(`/admin/users/${userId}`, input),
+
+  blockAdminUser: (userId: string, input: AdminSetUserBlockedInput) =>
+    api.post<{ success: true }>(`/admin/users/${userId}/block`, input),
+
+  unblockAdminUser: (userId: string) =>
+    api.post<{ success: true }>(`/admin/users/${userId}/unblock`, {}),
+
+  resetAdminUserPassword: (userId: string, input: AdminResetUserPasswordInput) =>
+    api.post<{ success: true }>(`/admin/users/${userId}/reset-password`, input),
 
   promoteInstanceAdmin: (userId: string) =>
     api.post(`/admin/users/${userId}/promote-instance-admin`, {}),

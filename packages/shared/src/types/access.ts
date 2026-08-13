@@ -152,6 +152,7 @@ export interface InstanceUserRoleGrant {
 }
 
 export interface AdminUserDirectoryEntry extends AccessUserProfile {
+  status: "ACTIVE" | "BLOCKED";
   isInstanceAdmin: boolean;
   activeCompanyMembershipCount: number;
 }
@@ -164,6 +165,9 @@ export interface UserCompanyAccessEntry extends CompanyMembership {
 
 export interface UserCompanyAccessResponse {
   user: (AccessUserProfile & {
+    phone: string | null;
+    cpf: string | null;
+    status: "ACTIVE" | "BLOCKED";
     isInstanceAdmin: boolean;
   }) | null;
   companyAccess: UserCompanyAccessEntry[];

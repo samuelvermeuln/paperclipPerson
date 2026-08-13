@@ -30,6 +30,10 @@ import {
 } from "@paperclipai/db";
 import {
   acceptInviteSchema,
+  adminCreateUserSchema,
+  adminResetUserPasswordSchema,
+  adminSetUserBlockedSchema,
+  adminUpdateUserSchema,
   createCliAuthChallengeSchema,
   claimJoinRequestApiKeySchema,
   createBoardApiKeySchema,
@@ -71,6 +75,12 @@ import {
   logActivity,
   notifyHireApproved
 } from "../services/index.js";
+import {
+  createAdminUser,
+  resetAdminUserPassword,
+  setAdminUserBlocked,
+  updateAdminUser,
+} from "../services/human-auth.js";
 import {
   grantsForHumanRole,
   normalizeHumanRole,
@@ -1539,6 +1549,9 @@ async function loadUserCompanyAccessResponse(
         email: authUsers.email,
         name: authUsers.name,
         image: authUsers.image,
+        phone: authUsers.phone,
+        cpf: authUsers.cpf,
+        status: authUsers.status,
       })
       .from(authUsers)
       .where(eq(authUsers.id, userId))
@@ -1562,6 +1575,9 @@ async function loadUserCompanyAccessResponse(
     user: user
       ? {
           ...toUserProfile(user),
+          phone: user.phone ?? null,
+          cpf: user.cpf ?? null,
+          status: user.status as "ACTIVE" | "BLOCKED",
           isInstanceAdmin,
         }
       : null,
@@ -4753,6 +4769,20 @@ export function accessRoutes(
   );
 
   router.post(
+    "/admin/users",
+    validate(adminCreateUserSchema),
+    async (req, res) => {
+      await assertInstanceAdmin(req);
+      const userId = await createAdminUser(
+        db,
+        adminCreateUserSchema.parse(req.body),
+        req.actor.userId ?? null,
+      );
+      res.status(201).json({ userId });
+    }
+  );
+
+  router.post(
     "/admin/users/:userId/promote-instance-admin",
     async (req, res) => {
       await assertInstanceAdmin(req);
@@ -4772,6 +4802,7 @@ export function accessRoutes(
         email: authUsers.email,
         name: authUsers.name,
         image: authUsers.image,
+        status: authUsers.status,
       })
       .from(authUsers)
       .orderBy(desc(authUsers.updatedAt));
@@ -4815,12 +4846,58 @@ export function accessRoutes(
     res.json(
       filteredUsers.slice(0, 50).map((user) => ({
         ...toUserProfile(user),
+        status: user.status as "ACTIVE" | "BLOCKED",
         isInstanceAdmin: adminIds.has(user.id),
         activeCompanyMembershipCount:
           membershipCountByUserId.get(user.id) ?? 0,
       })),
     );
   });
+
+  router.patch(
+    "/admin/users/:userId",
+    validate(adminUpdateUserSchema),
+    async (req, res) => {
+      await assertInstanceAdmin(req);
+      const userId = req.params.userId as string;
+      await updateAdminUser(db, userId, adminUpdateUserSchema.parse(req.body));
+      res.json({ success: true });
+    }
+  );
+
+  router.post(
+    "/admin/users/:userId/block",
+    validate(adminSetUserBlockedSchema),
+    async (req, res) => {
+      await assertInstanceAdmin(req);
+      const userId = req.params.userId as string;
+      const payload = adminSetUserBlockedSchema.parse(req.body);
+      await setAdminUserBlocked(db, userId, "BLOCKED", payload.reason ?? null);
+      res.json({ success: true });
+    }
+  );
+
+  router.post(
+    "/admin/users/:userId/unblock",
+    async (req, res) => {
+      await assertInstanceAdmin(req);
+      const userId = req.params.userId as string;
+      await setAdminUserBlocked(db, userId, "ACTIVE", null);
+      res.json({ success: true });
+    }
+  );
+
+  router.post(
+    "/admin/users/:userId/reset-password",
+    validate(adminResetUserPasswordSchema),
+    async (req, res) => {
+      await assertInstanceAdmin(req);
+      const userId = req.params.userId as string;
+      const payload = adminResetUserPasswordSchema.parse(req.body);
+      await resetAdminUserPassword(db, userId, payload.newPassword);
+      res.json({ success: true });
+    }
+  );
 
   router.post(
     "/admin/users/:userId/demote-instance-admin",

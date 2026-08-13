@@ -4,11 +4,14 @@ import type { Db } from "@paperclipai/db";
 import { authUsers } from "@paperclipai/db";
 import {
   authSessionSchema,
+  completeRegistrationSchema,
   currentUserProfileSchema,
+  meResponseSchema,
   updateCurrentUserProfileSchema,
 } from "@paperclipai/shared";
 import { unauthorized } from "../errors.js";
 import { validate } from "../middleware/validate.js";
+import { completeHumanRegistration, loadMeSnapshot } from "../services/human-auth.js";
 
 async function loadCurrentUserProfile(db: Db, userId: string) {
   const user = await db
@@ -58,6 +61,32 @@ export function authRoutes(db: Db) {
     }
 
     res.json(await loadCurrentUserProfile(db, req.actor.userId));
+  });
+
+  router.get("/me", async (req, res) => {
+    if (req.actor.type !== "board" || !req.actor.userId) {
+      throw unauthorized("Board authentication required");
+    }
+
+    res.json(meResponseSchema.parse(await loadMeSnapshot(db, req.actor.userId)));
+  });
+
+  router.post("/complete-registration", validate(completeRegistrationSchema), async (req, res) => {
+    if (req.actor.type !== "board" || !req.actor.userId) {
+      throw unauthorized("Board authentication required");
+    }
+
+    const company = await completeHumanRegistration(
+      db,
+      req.actor.userId,
+      completeRegistrationSchema.parse(req.body),
+    );
+
+    res.status(201).json({
+      companyId: company.id,
+      companyName: company.name,
+      issuePrefix: company.issuePrefix,
+    });
   });
 
   router.patch("/profile", validate(updateCurrentUserProfileSchema), async (req, res) => {

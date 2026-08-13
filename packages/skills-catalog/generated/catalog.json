@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "packageName": "@paperclipai/skills-catalog",
   "packageVersion": "0.3.1",
-  "generatedAt": "2026-08-07T20:30:29.973Z",
+  "generatedAt": "2026-08-13T13:43:16.868Z",
   "skills": [
     {
       "id": "paperclipai:bundled:docs:doc-maintenance",
@@ -102,11 +102,11 @@
         {
           "path": "SKILL.md",
           "kind": "skill",
-          "sizeBytes": 12028,
-          "sha256": "083d5fa8dc43c3ce7747e89c1afb6f6f42d0603a31808bffc5f8e56735f2d865"
+          "sizeBytes": 12230,
+          "sha256": "e758eec6e464ab36339d74719c01fff2fc59a03d012d9c1ecb2d03b18a3bfd6b"
         }
       ],
-      "contentHash": "sha256:f2592d81f616628a3eba92636616424f2eed82ec22bb504240a58f6be115e407"
+      "contentHash": "sha256:59c2dc8c0cce4573b303eb23eb21b97a1b419adfe7419d5f293c7f34024aab8a"
     },
     {
       "id": "paperclipai:bundled:paperclip-operations:status-card-query",
@@ -1149,17 +1149,17 @@
         {
           "path": "SKILL.md",
           "kind": "skill",
-          "sizeBytes": 11183,
-          "sha256": "452386be3aa5e2988dc9d72f288f469975da766626a25c48017877963c533781"
+          "sizeBytes": 11393,
+          "sha256": "5b16668eb17e67ebf93a55e536e39038916fb31461690162c2dccbfd44d4e99b"
         },
         {
           "path": "examples/notion-mcp-research-gate.md",
           "kind": "markdown",
-          "sizeBytes": 1900,
-          "sha256": "944b13ac67c06c65643eb236e856f1479106749861535648d29334f84cf1b50b"
+          "sizeBytes": 1943,
+          "sha256": "cf3ed32409014d923e39f9c7532eb000457e50744c563d1340b103ec3a8106d9"
         }
       ],
-      "contentHash": "sha256:4dbb76624e0fd5502fa10a9168f77214c5020899838af887e77a1617a0a00c31"
+      "contentHash": "sha256:297d68c5b46890a6cb4fe90f1f76621d55d73c671f6fc80485851eaf205dcf48"
     }
   ]
 }

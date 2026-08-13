@@ -869,6 +869,25 @@ export type {
   UserCompanyAccessEntry,
   UserCompanyAccessResponse,
 } from "./access.js";
+export type {
+  AddressInput,
+  RegisterPfInput,
+  RegisterPjInput,
+  RegisterRequest,
+  CompletePfRegistrationInput,
+  CompletePjRegistrationInput,
+  CompleteRegistrationInput,
+  ForgotPasswordRequest,
+  VerifyPasswordResetCodeInput,
+  ResetPasswordWithCodeInput,
+  MeResponse,
+  AdminCreateUserInput,
+  AdminUpdateUserInput,
+  AdminResetUserPasswordInput,
+  AdminSetUserBlockedInput,
+  AuthUserStatus,
+  RegistrationKind,
+} from "./human-auth.js";
 export type { QuotaWindow, ProviderQuotaResult } from "./quota.js";
 export type {
   CompanyPortabilityInclude,

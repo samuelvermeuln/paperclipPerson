@@ -57,6 +57,8 @@ export function boardAuthService(db: Db) {
           id: authUsers.id,
           name: authUsers.name,
           email: authUsers.email,
+          status: authUsers.status,
+          banned: authUsers.banned,
         })
         .from(authUsers)
         .where(eq(authUsers.id, userId))
@@ -83,11 +85,13 @@ export function boardAuthService(db: Db) {
         .then((rows) => rows[0] ?? null),
     ]);
 
+    const activeUser = user && user.status !== "BLOCKED" && !user.banned ? user : null;
+
     return {
-      user,
-      companyIds: memberships.map((row) => row.companyId),
-      memberships,
-      isInstanceAdmin: Boolean(adminRole),
+      user: activeUser,
+      companyIds: activeUser ? memberships.map((row) => row.companyId) : [],
+      memberships: activeUser ? memberships : [],
+      isInstanceAdmin: activeUser ? Boolean(adminRole) : false,
     };
   }
 

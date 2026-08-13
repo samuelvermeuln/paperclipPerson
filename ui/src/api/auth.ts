@@ -1,9 +1,19 @@
 import {
   authSessionSchema,
+  completeRegistrationSchema,
   currentUserProfileSchema,
+  forgotPasswordRequestSchema,
+  meResponseSchema,
+  resetPasswordWithCodeSchema,
+  verifyPasswordResetCodeSchema,
   type AuthSession,
+  type CompleteRegistrationInput,
   type CurrentUserProfile,
+  type ForgotPasswordRequest,
+  type MeResponse,
+  type ResetPasswordWithCodeInput,
   type UpdateCurrentUserProfile,
+  type VerifyPasswordResetCodeInput,
 } from "@paperclipai/shared";
 import { redactUrlSecrets } from "@/lib/redact-url-secrets";
 
@@ -184,6 +194,57 @@ export const authApi = {
 
   updateProfile: async (input: UpdateCurrentUserProfile): Promise<CurrentUserProfile> =>
     authPatch("/profile", input, (payload) => currentUserProfileSchema.parse(payload)),
+
+  getMe: async (): Promise<MeResponse> => {
+    const res = await fetch("/api/auth/me", {
+      credentials: "include",
+      headers: { Accept: "application/json" },
+    });
+    const payload = await res.json().catch(() => null);
+    if (!res.ok) {
+      throw extractAuthError(payload as AuthErrorBody, res.status);
+    }
+    return meResponseSchema.parse(payload);
+  },
+
+  completeRegistration: async (input: CompleteRegistrationInput) => {
+    const payload = completeRegistrationSchema.parse(input);
+    return authPost("/complete-registration", payload as Record<string, unknown>);
+  },
+
+  requestPasswordResetCode: async (input: ForgotPasswordRequest) => {
+    const payload = forgotPasswordRequestSchema.parse(input);
+    await authPost("/email-otp/request-password-reset", payload as Record<string, unknown>);
+  },
+
+  verifyPasswordResetCode: async (input: VerifyPasswordResetCodeInput) => {
+    const payload = verifyPasswordResetCodeSchema.parse(input);
+    await authPost("/email-otp/check-verification-otp", {
+      email: payload.email,
+      otp: payload.code,
+      type: "forget-password",
+    });
+  },
+
+  resetPasswordWithCode: async (input: ResetPasswordWithCodeInput) => {
+    const payload = resetPasswordWithCodeSchema.parse(input);
+    await authPost("/email-otp/reset-password", {
+      email: payload.email,
+      otp: payload.code,
+      password: payload.newPassword,
+    });
+  },
+
+  signInWithGoogle: async (callbackURL: string = "/") => {
+    const payload = await authPost("/sign-in/social", {
+      provider: "google",
+      callbackURL,
+      disableRedirect: true,
+    });
+    if (!payload || typeof payload !== "object") return null;
+    const url = (payload as Record<string, unknown>).url;
+    return typeof url === "string" ? url : null;
+  },
 
   signOut: async (): Promise<SignOutResult | null> => {
     const payload = await authPost("/sign-out", {});
